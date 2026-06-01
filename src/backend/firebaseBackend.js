@@ -5,6 +5,7 @@ import {
   onAuthStateChanged,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  sendEmailVerification,
   signOut,
 } from "firebase/auth";
 import {
@@ -28,12 +29,27 @@ export function subscribeAuth(callback) {
   return onAuthStateChanged(auth, callback);
 }
 
-export function signUp(email, password) {
-  return createUserWithEmailAndPassword(auth, email, password);
+export async function signUp(email, password) {
+  const cred = await createUserWithEmailAndPassword(auth, email, password);
+  // 가입 직후 인증 메일 발송
+  await sendEmailVerification(cred.user);
+  return cred;
 }
 
 export function signIn(email, password) {
   return signInWithEmailAndPassword(auth, email, password);
+}
+
+// 인증 메일 다시 보내기
+export function sendVerification() {
+  if (auth.currentUser) return sendEmailVerification(auth.currentUser);
+}
+
+// 메일 링크 클릭 후, 인증 완료 여부를 새로고침해서 알려줌
+export async function refreshUser() {
+  if (!auth.currentUser) return false;
+  await auth.currentUser.reload();
+  return auth.currentUser.emailVerified;
 }
 
 export function logout() {

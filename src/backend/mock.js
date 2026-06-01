@@ -33,7 +33,8 @@ function notifyMemos() {
 }
 
 function loginAs(email) {
-  currentUser = { uid: `demo-${email}`, email, displayName: email };
+  // 데모에서는 인증된 것으로 간주합니다.
+  currentUser = { uid: `demo-${email}`, email, displayName: email, emailVerified: true };
   notifyAuth();
 }
 
@@ -49,6 +50,12 @@ export async function signUp(email) {
 
 export async function signIn(email) {
   loginAs(email);
+}
+
+export function sendVerification() {}
+
+export async function refreshUser() {
+  return true;
 }
 
 export async function logout() {

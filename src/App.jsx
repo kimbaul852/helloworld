@@ -4,6 +4,8 @@ import {
   subscribeAuth,
   signUp,
   signIn,
+  sendVerification,
+  refreshUser,
   logout,
   subscribeMemos,
   addMemo,
@@ -14,6 +16,7 @@ import {
 // 로그인한 사용자별로 자기 메모만 보고/추가/삭제할 수 있습니다.
 export default function App() {
   const [user, setUser] = useState(null);
+  const [verified, setVerified] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [memos, setMemos] = useState([]);
   const [text, setText] = useState("");
@@ -22,25 +25,29 @@ export default function App() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     return subscribeAuth((u) => {
       setUser(u);
+      setVerified(!!u?.emailVerified);
       setAuthReady(true);
     });
   }, []);
 
   useEffect(() => {
-    if (!user) {
+    // 로그인 + 이메일 인증이 끝난 사용자만 메모를 구독
+    if (!user || !verified) {
       setMemos([]);
       return;
     }
     return subscribeMemos(user.uid, setMemos);
-  }, [user]);
+  }, [user, verified]);
 
   const handleAuth = async (mode) => {
     setError("");
+    setInfo("");
     if (!email || !password) {
       setError("이메일과 비밀번호를 입력하세요.");
       return;
@@ -49,6 +56,7 @@ export default function App() {
     try {
       if (mode === "signup") {
         await signUp(email, password);
+        setInfo("인증 메일을 보냈어요. 메일함에서 링크를 누른 뒤 아래 버튼으로 확인하세요.");
       } else {
         await signIn(email, password);
       }
@@ -57,6 +65,20 @@ export default function App() {
     } finally {
       setBusy(false);
     }
+  };
+
+  // 이메일 인증 완료 여부를 새로고침
+  const handleCheckVerified = async () => {
+    setBusy(true);
+    const ok = await refreshUser();
+    setVerified(ok);
+    if (!ok) setInfo("아직 인증이 확인되지 않았어요. 메일의 링크를 누른 뒤 다시 시도하세요.");
+    setBusy(false);
+  };
+
+  const handleResend = async () => {
+    await sendVerification();
+    setInfo("인증 메일을 다시 보냈어요. 메일함(스팸함도)을 확인하세요.");
   };
 
   const handleAdd = async (e) => {
@@ -99,6 +121,7 @@ export default function App() {
             autoComplete="current-password"
           />
           {error && <p className="error">{error}</p>}
+          {info && <p className="info">{info}</p>}
           <div className="auth-buttons">
             <button disabled={busy} onClick={() => handleAuth("signin")}>
               로그인
@@ -111,6 +134,28 @@ export default function App() {
               회원가입
             </button>
           </div>
+        </div>
+      ) : !verified ? (
+        <div className="card">
+          <p>
+            <b>{user.email}</b> 으로 인증 메일을 보냈어요.
+            <br />
+            메일함에서 링크를 누른 뒤 아래 버튼을 눌러주세요.
+          </p>
+          {info && <p className="info">{info}</p>}
+          <div className="auth-buttons">
+            <button disabled={busy} onClick={handleCheckVerified}>
+              인증했어요
+            </button>
+            <button className="secondary" onClick={handleResend}>
+              메일 다시 보내기
+            </button>
+          </div>
+          <p style={{ marginTop: 12 }}>
+            <button className="secondary" onClick={() => logout()}>
+              로그아웃
+            </button>
+          </p>
         </div>
       ) : (
         <>
