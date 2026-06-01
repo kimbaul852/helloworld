@@ -12,7 +12,6 @@ import {
   collection,
   query,
   where,
-  orderBy,
   onSnapshot,
   addDoc,
   deleteDoc,
@@ -42,14 +41,20 @@ export function logout() {
 }
 
 export function subscribeMemos(uid, callback) {
-  const q = query(
-    collection(db, "memos"),
-    where("uid", "==", uid),
-    orderBy("createdAt", "desc")
+  // 복합 색인이 필요 없도록 uid로만 조회하고, 정렬은 코드에서 처리합니다.
+  const q = query(collection(db, "memos"), where("uid", "==", uid));
+  return onSnapshot(
+    q,
+    (snap) => {
+      const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      // 최신순 정렬 (createdAt은 Firestore Timestamp, 저장 직후엔 잠깐 null일 수 있음)
+      items.sort(
+        (a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0)
+      );
+      callback(items);
+    },
+    (err) => console.error("Firestore 구독 오류:", err)
   );
-  return onSnapshot(q, (snap) => {
-    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-  });
 }
 
 export function addMemo(uid, text) {
