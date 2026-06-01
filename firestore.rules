@@ -1,14 +1,26 @@
 rules_version = '2';
 
 // Firebase 콘솔 > Firestore Database > 규칙(Rules) 탭에 붙여넣으세요.
-// 로그인한 사용자가 "자기 소유(uid가 일치하는)" 메모만 읽고/쓰도록 제한합니다.
+// 로그인한 사용자가 "자기 소유(uid가 일치하는)" 메모만 읽고/쓰도록 제한하고,
+// 저장되는 데이터의 형식까지 검증합니다.
 service cloud.firestore {
   match /databases/{database}/documents {
     match /memos/{memoId} {
+      // 자기 메모만 읽고 삭제 가능
       allow read, delete: if request.auth != null
         && request.auth.uid == resource.data.uid;
+
+      // 생성 시: 본인 uid + 허용된 필드만 + text는 1~1000자 문자열
+      //          + createdAt은 서버 시간(timestamp)만 허용
       allow create: if request.auth != null
-        && request.auth.uid == request.resource.data.uid;
+        && request.auth.uid == request.resource.data.uid
+        && request.resource.data.keys().hasOnly(['uid', 'text', 'createdAt'])
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 1000
+        && request.resource.data.createdAt == request.time;
+
+      // 수정(update)은 허용하지 않음 (기본적으로 거부됨)
     }
   }
 }
