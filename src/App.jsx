@@ -128,7 +128,7 @@ export default function App() {
         </div>
       )}
 
-      <h1>📝 helloworld</h1>
+      {!(user && verified) && <h1>📝 helloworld</h1>}
 
       {!user ? (
         <div className="card">
@@ -186,17 +186,15 @@ export default function App() {
         </div>
       ) : (
         <>
-          <div className="topbar">
-            <span>
-              안녕하세요, <b>{user.email}</b> 님
-            </span>
-            <span className="topbar-actions">
+          <header className="appbar">
+            <span className="appbar-title">📝 helloworld</span>
+            <span className="appbar-actions">
               <button className="secondary" onClick={() => setSplit((s) => !s)}>
                 {split ? "분할 끄기" : "분할"}
               </button>
               <button onClick={() => logout()}>로그아웃</button>
             </span>
-          </div>
+          </header>
 
           {split ? (
             <SplitLayout top={<WebPane />} bottom={memoBody} />
