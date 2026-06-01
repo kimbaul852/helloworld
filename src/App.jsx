@@ -11,6 +11,8 @@ import {
   addMemo,
   removeMemo,
 } from "./backend";
+import SplitLayout from "./components/SplitLayout";
+import WebPane from "./components/WebPane";
 
 // 이메일/비밀번호 로그인 + 데이터베이스 예제 앱입니다.
 // 로그인한 사용자별로 자기 메모만 보고/추가/삭제할 수 있습니다.
@@ -20,6 +22,7 @@ export default function App() {
   const [authReady, setAuthReady] = useState(false);
   const [memos, setMemos] = useState([]);
   const [text, setText] = useState("");
+  const [split, setSplit] = useState(false);
 
   // 로그인 화면용 상태
   const [email, setEmail] = useState("");
@@ -93,6 +96,30 @@ export default function App() {
     return <div className="container">불러오는 중…</div>;
   }
 
+  // 메모 입력/목록 (일반 모드와 분할 모드에서 공통으로 사용)
+  const memoBody = (
+    <div className="memo-body">
+      <form onSubmit={handleAdd} className="memo-form">
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="메모를 입력하세요"
+        />
+        <button type="submit">추가</button>
+      </form>
+
+      <ul className="memo-list">
+        {memos.length === 0 && <li className="empty">아직 메모가 없어요.</li>}
+        {memos.map((m) => (
+          <li key={m.id}>
+            <span>{m.text}</span>
+            <button onClick={() => removeMemo(m.id)}>삭제</button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+
   return (
     <div className="container">
       {isDemo && (
@@ -163,27 +190,19 @@ export default function App() {
             <span>
               안녕하세요, <b>{user.email}</b> 님
             </span>
-            <button onClick={() => logout()}>로그아웃</button>
+            <span className="topbar-actions">
+              <button className="secondary" onClick={() => setSplit((s) => !s)}>
+                {split ? "분할 끄기" : "분할"}
+              </button>
+              <button onClick={() => logout()}>로그아웃</button>
+            </span>
           </div>
 
-          <form onSubmit={handleAdd} className="memo-form">
-            <input
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="메모를 입력하세요"
-            />
-            <button type="submit">추가</button>
-          </form>
-
-          <ul className="memo-list">
-            {memos.length === 0 && <li className="empty">아직 메모가 없어요.</li>}
-            {memos.map((m) => (
-              <li key={m.id}>
-                <span>{m.text}</span>
-                <button onClick={() => removeMemo(m.id)}>삭제</button>
-              </li>
-            ))}
-          </ul>
+          {split ? (
+            <SplitLayout top={<WebPane />} bottom={memoBody} />
+          ) : (
+            memoBody
+          )}
         </>
       )}
     </div>
