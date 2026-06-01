@@ -1,0 +1,19 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5b9bff"/>
+      <stop offset="1" stop-color="#2f6fe0"/>
+    </linearGradient>
+  </defs>
+  <!-- 배경 (전체를 채워서 maskable 아이콘에도 안전) -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <!-- 메모지 -->
+  <rect x="146" y="120" width="220" height="272" rx="20" fill="#ffffff"/>
+  <!-- 메모 줄들 -->
+  <rect x="178" y="170" width="156" height="16" rx="8" fill="#cdd7e6"/>
+  <rect x="178" y="216" width="156" height="16" rx="8" fill="#cdd7e6"/>
+  <rect x="178" y="262" width="110" height="16" rx="8" fill="#cdd7e6"/>
+  <!-- 체크(완료) 강조 -->
+  <circle cx="318" cy="316" r="42" fill="#34c759"/>
+  <path d="M298 316 l14 14 l26 -30" fill="none" stroke="#ffffff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
