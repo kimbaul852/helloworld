@@ -1,11 +1,10 @@
-// 실제 Firebase 백엔드입니다. .env에 Firebase 키가 채워져 있을 때 사용됩니다.
-// (키가 없으면 backend/index.js가 자동으로 mock.js를 대신 사용합니다.)
+// 실제 Firebase 백엔드입니다. (이메일/비밀번호 로그인 + Firestore)
 import { initializeApp } from "firebase/app";
 import {
   getAuth,
-  GoogleAuthProvider,
   onAuthStateChanged,
-  signInWithPopup,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
   signOut,
 } from "firebase/auth";
 import {
@@ -20,27 +19,22 @@ import {
   doc,
   serverTimestamp,
 } from "firebase/firestore";
-
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-};
+import { firebaseConfig } from "../firebaseConfig";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const googleProvider = new GoogleAuthProvider();
 const db = getFirestore(app);
 
 export function subscribeAuth(callback) {
   return onAuthStateChanged(auth, callback);
 }
 
-export function login() {
-  return signInWithPopup(auth, googleProvider);
+export function signUp(email, password) {
+  return createUserWithEmailAndPassword(auth, email, password);
+}
+
+export function signIn(email, password) {
+  return signInWithEmailAndPassword(auth, email, password);
 }
 
 export function logout() {

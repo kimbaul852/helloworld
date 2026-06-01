@@ -41,6 +41,43 @@ h1 {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
+.card input {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  margin: 8px 0;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+.auth-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.auth-buttons button {
+  flex: 1;
+}
+
+button.secondary {
+  background: #fff;
+  color: #4285f4;
+  border: 1px solid #4285f4;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.error {
+  color: #e74c3c;
+  font-size: 13px;
+  margin: 4px 0 0;
+}
+
 button {
   cursor: pointer;
   border: none;
