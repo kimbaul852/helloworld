@@ -9,7 +9,23 @@ Firebase 로그인 + Firestore 데이터베이스를 사용하는 React 웹앱 �
 - [Firebase Authentication](https://firebase.google.com/docs/auth) (Google 로그인)
 - [Cloud Firestore](https://firebase.google.com/docs/firestore) (데이터베이스)
 
-## 시작하기
+## 빠르게 체험하기 (설정 없이 데모 모드) 🧪
+
+Firebase 설정 없이도 바로 느낌을 볼 수 있습니다. `.env` 파일이 없으면 자동으로
+**데모 모드**로 동작해요. (로그인은 가짜 사용자로, 데이터는 브라우저 안에 저장됩니다.)
+
+```bash
+npm install
+npm run dev
+```
+
+브라우저에서 안내되는 주소(기본 http://localhost:5173)를 열고
+"데모로 로그인" → 메모를 추가/삭제해 보세요.
+
+> 데이터는 그 브라우저에만 저장되며, 실제 서버에는 저장되지 않습니다.
+> 아래 Firebase 설정을 마치면 자동으로 진짜 백엔드로 전환됩니다.
+
+## 시작하기 (실제 Firebase 연결)
 
 ### 1. 패키지 설치
 
