@@ -1,28 +1,46 @@
 rules_version = '2';
 
 // Firebase 콘솔 > Firestore Database > 규칙(Rules) 탭에 붙여넣으세요.
-// 로그인 + "이메일 인증을 마친" 사용자가 자기 소유(uid 일치) 메모만 읽고/쓰도록 제한하고,
-// 저장되는 데이터의 형식까지 검증합니다.
+// 로그인 + 이메일 인증을 마친 사용자가 자기 소유(uid 일치) 데이터만
+// 읽고/쓰도록 제한하고, 저장되는 데이터의 형식까지 검증합니다.
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /memos/{memoId} {
-      // 자기 메모만 읽고 삭제 가능 (이메일 인증 필요)
-      allow read, delete: if request.auth != null
-        && request.auth.token.email_verified == true
-        && request.auth.uid == resource.data.uid;
 
-      // 생성 시: 이메일 인증 + 본인 uid + 허용된 필드만 + text는 1~1000자 문자열
-      //          + createdAt은 서버 시간(timestamp)만 허용
-      allow create: if request.auth != null
-        && request.auth.token.email_verified == true
+    // 공통: 로그인 + 이메일 인증 여부
+    function verified() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    // 지출 내역
+    match /expenses/{id} {
+      allow read, delete: if verified() && request.auth.uid == resource.data.uid;
+
+      allow create: if verified()
         && request.auth.uid == request.resource.data.uid
-        && request.resource.data.keys().hasOnly(['uid', 'text', 'createdAt'])
-        && request.resource.data.text is string
-        && request.resource.data.text.size() > 0
-        && request.resource.data.text.size() <= 1000
+        && request.resource.data.keys().hasOnly(
+             ['uid', 'amount', 'merchant', 'category', 'date', 'hasReceipt', 'createdAt'])
+        && request.resource.data.amount is number
+        && request.resource.data.amount > 0
+        && request.resource.data.merchant is string
+        && request.resource.data.merchant.size() > 0
+        && request.resource.data.merchant.size() <= 100
+        && request.resource.data.category is string
+        && request.resource.data.date is string
+        && request.resource.data.hasReceipt is bool
         && request.resource.data.createdAt == request.time;
 
-      // 수정(update)은 허용하지 않음 (기본적으로 거부됨)
+      // 수정(update)은 허용하지 않음 (기본 거부)
+    }
+
+    // 영수증 이미지 (압축된 base64 문자열). 문서 1개당 1MiB 한도라 크기를 제한.
+    match /receipt_images/{id} {
+      allow read, delete: if verified() && request.auth.uid == resource.data.uid;
+
+      allow create: if verified()
+        && request.auth.uid == request.resource.data.uid
+        && request.resource.data.keys().hasOnly(['uid', 'data'])
+        && request.resource.data.data is string
+        && request.resource.data.data.size() <= 1000000;
     }
   }
 }

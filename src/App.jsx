@@ -7,21 +7,17 @@ import {
   sendVerification,
   refreshUser,
   logout,
-  subscribeMemos,
-  addMemo,
-  removeMemo,
 } from "./backend";
 import SplitLayout from "./components/SplitLayout";
 import WebPane from "./components/WebPane";
+import ExpenseTracker from "./components/ExpenseTracker";
 
-// 이메일/비밀번호 로그인 + 데이터베이스 예제 앱입니다.
-// 로그인한 사용자별로 자기 메모만 보고/추가/삭제할 수 있습니다.
+// 이메일/비밀번호 로그인 + 가계부(지출 기록 + 영수증 사진) 앱입니다.
+// 로그인·이메일 인증한 사용자별로 자기 지출만 보고/추가/삭제할 수 있습니다.
 export default function App() {
   const [user, setUser] = useState(null);
   const [verified, setVerified] = useState(false);
   const [authReady, setAuthReady] = useState(false);
-  const [memos, setMemos] = useState([]);
-  const [text, setText] = useState("");
   const [split, setSplit] = useState(false);
 
   // 로그인 화면용 상태
@@ -38,15 +34,6 @@ export default function App() {
       setAuthReady(true);
     });
   }, []);
-
-  useEffect(() => {
-    // 로그인 + 이메일 인증이 끝난 사용자만 메모를 구독
-    if (!user || !verified) {
-      setMemos([]);
-      return;
-    }
-    return subscribeMemos(user.uid, setMemos);
-  }, [user, verified]);
 
   const handleAuth = async (mode) => {
     setError("");
@@ -84,39 +71,14 @@ export default function App() {
     setInfo("인증 메일을 다시 보냈어요. 메일함(스팸함도)을 확인하세요.");
   };
 
-  const handleAdd = async (e) => {
-    e.preventDefault();
-    const value = text.trim();
-    if (!value || !user) return;
-    setText("");
-    await addMemo(user.uid, value);
-  };
-
   if (!authReady) {
     return <div className="container">불러오는 중…</div>;
   }
 
-  // 메모 입력/목록 (일반 모드와 분할 모드에서 공통으로 사용)
-  const memoBody = (
+  // 가계부 본문 (일반 모드와 분할 모드에서 공통으로 사용)
+  const body = user && (
     <div className="memo-body">
-      <form onSubmit={handleAdd} className="memo-form">
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="메모를 입력하세요"
-        />
-        <button type="submit">추가</button>
-      </form>
-
-      <ul className="memo-list">
-        {memos.length === 0 && <li className="empty">아직 메모가 없어요.</li>}
-        {memos.map((m) => (
-          <li key={m.id}>
-            <span>{m.text}</span>
-            <button onClick={() => removeMemo(m.id)}>삭제</button>
-          </li>
-        ))}
-      </ul>
+      <ExpenseTracker uid={user.uid} />
     </div>
   );
 
@@ -128,7 +90,7 @@ export default function App() {
         </div>
       )}
 
-      {!(user && verified) && <h1>📝 helloworld</h1>}
+      {!(user && verified) && <h1>💰 helloworld 가계부</h1>}
 
       {!user ? (
         <div className="card">
@@ -187,7 +149,7 @@ export default function App() {
       ) : (
         <>
           <header className="appbar">
-            <span className="appbar-title">📝 helloworld</span>
+            <span className="appbar-title">💰 가계부</span>
             <span className="appbar-actions">
               <button className="secondary" onClick={() => setSplit((s) => !s)}>
                 {split ? "분할 끄기" : "분할"}
@@ -196,11 +158,7 @@ export default function App() {
             </span>
           </header>
 
-          {split ? (
-            <SplitLayout top={<WebPane />} bottom={memoBody} />
-          ) : (
-            memoBody
-          )}
+          {split ? <SplitLayout top={<WebPane />} bottom={body} /> : body}
         </>
       )}
     </div>

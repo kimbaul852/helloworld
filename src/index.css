@@ -201,7 +201,7 @@ button:hover {
   border: 0;
 }
 
-/* 메모 영역: 컨테이너 좌우 패딩을 없앤 대신 여기서 약간의 여백 */
+/* 본문 영역: 컨테이너 좌우 패딩을 없앤 대신 여기서 약간의 여백 */
 .memo-body {
   padding: 0 10px;
 }
@@ -209,6 +209,190 @@ button:hover {
 /* 분할 모드에서는 패널 안쪽 여백을 조금 더 */
 .split-pane .memo-body {
   padding: 10px;
+}
+
+/* ===== 가계부 ===== */
+.exp-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #2f6fe0;
+  color: #fff;
+  padding: 14px 16px;
+  border-radius: 12px;
+  margin-bottom: 12px;
+}
+
+.exp-summary b {
+  font-size: 20px;
+}
+
+.exp-add-btn {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.exp-form {
+  background: #fff;
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.exp-form input,
+.exp-form select {
+  width: 100%;
+  padding: 11px;
+  margin-bottom: 8px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 15px;
+  background: #fff;
+}
+
+.exp-row {
+  display: flex;
+  gap: 8px;
+}
+
+.exp-row select,
+.exp-row input {
+  flex: 1;
+}
+
+.exp-photo {
+  display: block;
+  text-align: center;
+  padding: 11px;
+  border: 1px dashed #9bb4d6;
+  border-radius: 8px;
+  color: #2f6fe0;
+  font-size: 14px;
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+
+.exp-preview {
+  width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background: #f0f0f0;
+}
+
+.exp-form-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.exp-form-actions button {
+  flex: 1;
+}
+
+button.danger {
+  background: #e74c3c;
+}
+
+.exp-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.exp-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fff;
+  padding: 12px 14px;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+}
+
+.exp-cat {
+  font-size: 22px;
+}
+
+.exp-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.exp-merchant {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.exp-date {
+  font-size: 12px;
+  color: #888;
+}
+
+.exp-amount {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.exp-list .empty {
+  justify-content: center;
+  text-align: center;
+  color: #999;
+  box-shadow: none;
+  background: transparent;
+  cursor: default;
+}
+
+/* 상세 모달 */
+.exp-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 100;
+}
+
+.exp-modal-box {
+  background: #fff;
+  border-radius: 14px;
+  padding: 20px;
+  width: 100%;
+  max-width: 360px;
+  max-height: 85vh;
+  overflow: auto;
+  text-align: center;
+}
+
+.exp-modal-box h3 {
+  margin: 0 0 4px;
+}
+
+.exp-modal-amount {
+  font-size: 24px;
+  font-weight: 800;
+  margin: 4px 0;
+}
+
+.exp-modal-meta {
+  color: #888;
+  font-size: 13px;
+  margin: 2px 0 12px;
+}
+
+.exp-receipt {
+  width: 100%;
+  border-radius: 8px;
+  margin-bottom: 12px;
 }
 
 .memo-form {

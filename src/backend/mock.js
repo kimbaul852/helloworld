@@ -2,34 +2,50 @@
 // Firebase 설정값이 없을 때 자동으로 사용됩니다.
 // - 로그인: 입력한 이메일로 즉시 로그인됩니다(비밀번호는 검사하지 않음).
 // - 데이터: 브라우저의 localStorage에 저장됩니다(새로고침해도 유지, 같은 브라우저 안에서만).
-const STORAGE_KEY = "demo_memos";
+const EXP_KEY = "demo_expenses";
+const IMG_KEY = "demo_receipts";
 
 let currentUser = null;
 const authListeners = new Set();
-const memoListeners = new Set();
+const expenseListeners = new Set();
 
-function loadMemos() {
+function loadExpenses() {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) ?? [];
+    return JSON.parse(localStorage.getItem(EXP_KEY)) ?? [];
   } catch {
     return [];
   }
 }
 
-function saveMemos(memos) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(memos));
+function saveExpenses(list) {
+  localStorage.setItem(EXP_KEY, JSON.stringify(list));
+}
+
+function loadImages() {
+  try {
+    return JSON.parse(localStorage.getItem(IMG_KEY)) ?? {};
+  } catch {
+    return {};
+  }
+}
+
+function saveImages(map) {
+  localStorage.setItem(IMG_KEY, JSON.stringify(map));
 }
 
 function notifyAuth() {
   authListeners.forEach((cb) => cb(currentUser));
 }
 
-function notifyMemos() {
+function notifyExpenses() {
   if (!currentUser) return;
-  const mine = loadMemos()
-    .filter((m) => m.uid === currentUser.uid)
-    .sort((a, b) => b.createdAt - a.createdAt);
-  memoListeners.forEach((cb) => cb(mine));
+  const mine = loadExpenses()
+    .filter((e) => e.uid === currentUser.uid)
+    .sort((a, b) => {
+      if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+      return b.createdAt - a.createdAt;
+    });
+  expenseListeners.forEach((cb) => cb(mine));
 }
 
 function loginAs(email) {
@@ -63,25 +79,43 @@ export async function logout() {
   notifyAuth();
 }
 
-export function subscribeMemos(uid, callback) {
-  memoListeners.add(callback);
-  notifyMemos();
-  return () => memoListeners.delete(callback);
+export function subscribeExpenses(uid, callback) {
+  expenseListeners.add(callback);
+  notifyExpenses();
+  return () => expenseListeners.delete(callback);
 }
 
-export async function addMemo(uid, text) {
-  const memos = loadMemos();
-  memos.push({
-    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+export async function addExpense(uid, data, imageDataUrl) {
+  const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const list = loadExpenses();
+  list.push({
+    id,
     uid,
-    text,
+    amount: data.amount,
+    merchant: data.merchant,
+    category: data.category,
+    date: data.date,
+    hasReceipt: !!imageDataUrl,
     createdAt: Date.now(),
   });
-  saveMemos(memos);
-  notifyMemos();
+  saveExpenses(list);
+  if (imageDataUrl) {
+    const imgs = loadImages();
+    imgs[id] = imageDataUrl;
+    saveImages(imgs);
+  }
+  notifyExpenses();
+  return id;
 }
 
-export async function removeMemo(id) {
-  saveMemos(loadMemos().filter((m) => m.id !== id));
-  notifyMemos();
+export async function removeExpense(id) {
+  saveExpenses(loadExpenses().filter((e) => e.id !== id));
+  const imgs = loadImages();
+  delete imgs[id];
+  saveImages(imgs);
+  notifyExpenses();
+}
+
+export async function getReceiptImage(id) {
+  return loadImages()[id] ?? null;
 }
