@@ -1,23 +1,653 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>helloworld</title>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>복무유형 빌더</title>
+<style>
+  :root{
+    --paper:#ECEDE7; --surface:#F8F9F4; --field:#FFFFFF;
+    --ink:#1C1F19; --muted:#6B7065; --faint:#9A9E92;
+    --line:#CBCEC4; --line-strong:#A9AD9F;
+    --olive:#404A33; --olive-dk:#313A26;
+    --brass:#8E6E22; --brass-dk:#735819;
+    --signal:#A23B2B; --ok:#4A6B3A;
+    --sans:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+    --mono:ui-monospace,"SF Mono",Menlo,"D2Coding",monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--paper); color:var(--ink); font-family:var(--sans);
+    font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased;
+  }
+  /* ── header ─────────────────────────────── */
+  header{
+    display:flex; align-items:baseline; gap:16px; flex-wrap:wrap;
+    padding:18px 24px; border-bottom:1.5px solid var(--line-strong);
+    background:var(--surface); position:sticky; top:0; z-index:10;
+  }
+  header .mark{
+    font-family:var(--mono); font-size:11px; letter-spacing:.18em;
+    color:var(--olive); border:1.5px solid var(--olive); border-radius:3px;
+    padding:3px 7px; text-transform:uppercase;
+  }
+  header h1{font-size:18px; margin:0; font-weight:650; letter-spacing:-.01em}
+  header .sub{color:var(--muted); font-size:12.5px}
+  header .actions{margin-left:auto; display:flex; gap:8px; flex-wrap:wrap}
 
-    <!-- PWA: 앱 정보(매니페스트)와 테마 색 -->
-    <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#2f6fe0" />
+  button{font-family:var(--sans); font-size:13px; cursor:pointer; border-radius:5px;
+    border:1.5px solid var(--line-strong); background:var(--field); color:var(--ink);
+    padding:7px 12px; transition:background .12s,border-color .12s,transform .04s}
+  button:hover{border-color:var(--ink)}
+  button:active{transform:translateY(1px)}
+  button:focus-visible{outline:2px solid var(--olive); outline-offset:1px}
+  button.primary{background:var(--olive); border-color:var(--olive); color:#F4F5EF; font-weight:600}
+  button.primary:hover{background:var(--olive-dk); border-color:var(--olive-dk)}
+  button.brass{background:var(--brass); border-color:var(--brass); color:#FBF7EC; font-weight:600}
+  button.brass:hover{background:var(--brass-dk); border-color:var(--brass-dk)}
+  button.ghost{background:transparent}
+  button.danger{color:var(--signal); border-color:#D8B3AC}
+  button.danger:hover{border-color:var(--signal); background:#F6E9E6}
+  button.mini{padding:3px 8px; font-size:12px}
 
-    <!-- 홈 화면 추가 시 전체화면(standalone)으로 열리도록 (iOS/안드로이드) -->
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="helloworld" />
-    <link rel="apple-touch-icon" href="/icon-180.png" />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+  main{display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);
+    gap:20px; padding:20px 24px; max-width:1240px; margin:0 auto; align-items:start}
+  @media(max-width:880px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface); border:1.5px solid var(--line); border-radius:8px; overflow:hidden}
+  .panel > .head{display:flex; align-items:center; gap:8px; padding:11px 16px;
+    border-bottom:1.5px solid var(--line); background:#F2F3ED}
+  .panel > .head h2{font-size:13px; margin:0; font-weight:650; letter-spacing:.01em}
+  .panel > .head .idx{font-family:var(--mono); font-size:11px; color:var(--olive);
+    border:1px solid var(--line-strong); border-radius:3px; padding:1px 5px}
+  .panel > .body{padding:16px}
+
+  /* ── form ─────────────────────────────── */
+  label.fld{display:block; margin-bottom:13px}
+  label.fld > span{display:block; font-size:11.5px; color:var(--muted); margin-bottom:5px;
+    letter-spacing:.02em; font-weight:600}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:0 14px}
+  .grid3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:0 12px}
+  input[type=text], select, textarea{
+    width:100%; font-family:var(--sans); font-size:13.5px; color:var(--ink);
+    background:var(--field); border:1.5px solid var(--line-strong); border-radius:5px;
+    padding:8px 10px}
+  input.mono{font-family:var(--mono); font-size:13px}
+  input:focus, select:focus, textarea:focus{outline:none; border-color:var(--olive);
+    box-shadow:0 0 0 3px rgba(64,74,51,.12)}
+  textarea{resize:vertical; min-height:54px}
+  .hint{font-size:11px; color:var(--faint); margin-top:4px}
+
+  .row-inline{display:flex; gap:8px; align-items:center}
+  .chk{display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:var(--muted)}
+
+  /* ── 계급 chips ──────────────────────── */
+  .ranks{display:flex; flex-direction:column; gap:7px}
+  .rank-row{display:flex; gap:7px; align-items:center}
+  .rank-row .ord{font-family:var(--mono); font-size:11px; color:var(--faint); width:18px; text-align:right}
+  .rank-row input{flex:1}
+  .rank-row .tag{font-family:var(--mono); font-size:10px; padding:1px 5px; border-radius:3px;
+    background:#E7E3D4; color:var(--brass-dk); border:1px solid #DAD2BD}
+  .empty-note{font-size:12px; color:var(--faint); padding:8px 0}
+
+  /* ── 기간규칙 ────────────────────────── */
+  .rules{display:flex; flex-direction:column; gap:12px}
+  .rule{border:1.5px solid var(--line); border-radius:7px; background:var(--field)}
+  .rule .rhead{display:flex; align-items:center; gap:10px; padding:9px 12px; border-bottom:1px solid var(--line)}
+  .rule .rhead .n{font-family:var(--mono); font-size:11px; color:var(--olive);
+    border:1px solid var(--line-strong); border-radius:3px; padding:1px 6px}
+  .rule .rhead .when{flex:1; display:flex; gap:8px; align-items:center}
+  .rule .rhead .when input{max-width:150px}
+  .rule .rbody{padding:11px 12px}
+  .rule .duty{display:flex; align-items:center; gap:8px; margin-bottom:10px}
+  .rule .duty input{max-width:90px}
+  .rule .duty .unit{font-size:12px; color:var(--muted)}
+  .divisions{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px}
+  .div-chk{display:inline-flex; align-items:center; gap:6px; font-size:13px; padding:6px 11px;
+    border:1.5px solid var(--line-strong); border-radius:6px; cursor:pointer; user-select:none}
+  .div-chk.on{border-color:var(--olive); background:#EEF1E8; color:var(--olive-dk); font-weight:600}
+  .div-chk.off{opacity:.4; cursor:not-allowed}
+  .duties{display:flex; flex-direction:column; gap:6px; margin-bottom:10px}
+  .div-row{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+  .div-row .dlab{font-size:12px; color:var(--muted); min-width:54px; font-weight:600}
+  .div-row .dnum{width:66px; font-family:var(--mono); font-size:13px; padding:6px 8px;
+    border:1.5px solid var(--line-strong); border-radius:5px; background:var(--field)}
+  .div-row .dnum:focus{outline:none; border-color:var(--olive); box-shadow:0 0 0 3px rgba(64,74,51,.12)}
+  .div-row .u{font-size:11px; color:var(--muted)}
+  .promos{display:flex; flex-direction:column; gap:6px}
+  .promo{display:grid; grid-template-columns:18px 1fr 86px 30px; gap:8px; align-items:center}
+  .promo .o{font-family:var(--mono); font-size:11px; color:var(--faint); text-align:right}
+  .promo .nm{font-size:13px}
+  .promo input{max-width:none}
+  .promo .u{font-size:11px; color:var(--muted)}
+  .promo.remainder .val{font-family:var(--mono); font-size:13px; text-align:center;
+    padding:7px 0; border:1.5px dashed var(--line-strong); border-radius:5px; color:var(--brass-dk); background:#FBFAF4}
+  .promo.remainder.warn .val{color:var(--signal); border-color:#D8B3AC; background:#F8ECEA}
+  .ref-lock{font-size:12px; color:var(--brass-dk); background:#FBF6E8; border:1px dashed #DBCB9E;
+    border-radius:6px; padding:10px 12px}
+
+  /* ── preview ─────────────────────────── */
+  .preview pre{margin:0; font-family:var(--mono); font-size:12px; line-height:1.6;
+    white-space:pre-wrap; word-break:break-word; color:var(--ink); max-height:340px; overflow:auto}
+  .preview .k{color:var(--olive); font-weight:600}
+  .preview .n{color:var(--brass-dk)}
+  .preview .b{color:var(--faint); font-style:italic}
+  .valid{font-size:12px; padding:8px 16px; border-top:1px solid var(--line)}
+  .valid.ok{color:var(--ok)} .valid.bad{color:var(--signal)}
+
+  /* ── saved list ──────────────────────── */
+  .saved{display:flex; flex-direction:column; gap:8px}
+  .saved .item{display:flex; align-items:center; gap:10px; padding:9px 11px;
+    border:1.5px solid var(--line); border-radius:6px; background:var(--field)}
+  .saved .item.editing{border-color:var(--olive); box-shadow:0 0 0 2px rgba(64,74,51,.1)}
+  .saved .item .meta{flex:1; min-width:0}
+  .saved .item .ttl{font-size:13px; font-weight:600}
+  .saved .item .sub{font-family:var(--mono); font-size:11px; color:var(--muted);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .saved .empty{font-size:12.5px; color:var(--faint); text-align:center; padding:16px}
+  .pill{font-family:var(--mono); font-size:10px; padding:1px 6px; border-radius:3px;
+    border:1px solid var(--line-strong); color:var(--muted)}
+
+  .tabs{display:flex; gap:0; border-bottom:1.5px solid var(--line)}
+  .tabs button{border:none; border-radius:0; background:transparent; padding:10px 14px;
+    color:var(--muted); border-bottom:2px solid transparent; font-weight:600; font-size:12.5px}
+  .tabs button.on{color:var(--olive); border-bottom-color:var(--olive)}
+  .tabpane{padding:16px}
+  .tabpane[hidden]{display:none}
+
+  .addbar{margin-top:10px}
+  @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <span class="mark">군돌이</span>
+  <h1>복무유형 빌더</h1>
+  <span class="sub">폼을 채우면 객체가 만들어집니다 · JSON / TS 내보내기</span>
+  <div class="actions">
+    <button class="ghost mini" id="loadSample">현역병 예시</button>
+    <button class="ghost mini" id="loadSample2">임기제부사관 예시</button>
+    <button class="ghost mini" id="resetForm">새로 만들기</button>
+  </div>
+</header>
+
+<main>
+  <!-- ════ EDITOR ════ -->
+  <div style="display:flex; flex-direction:column; gap:20px">
+    <section class="panel">
+      <div class="head"><h2>기본 정보</h2></div>
+      <div class="body">
+        <div class="grid3">
+          <label class="fld"><span>신분</span>
+            <select id="f_status">
+              <option>병/요원</option><option>부사관</option><option>준사관</option><option>장교</option>
+            </select></label>
+          <label class="fld"><span>역종</span>
+            <select id="f_cat">
+              <option>현역</option><option>예비역</option><option>보충역</option><option>대체역</option><option>전환복무</option>
+            </select></label>
+          <label class="fld"><span>군별</span>
+            <select id="f_branch">
+              <option>육군</option><option>해군</option><option>공군</option><option>해병대</option><option>없음</option>
+            </select></label>
+        </div>
+        <div class="grid2">
+          <label class="fld"><span>유형</span>
+            <input type="text" id="f_type" placeholder="현역병 / 의무경찰 / 승선복무예비역"></label>
+          <label class="fld"><span>id <span style="font-weight:400;color:var(--faint)">(유형에서 자동 생성 · 직접 수정 가능)</span></span>
+            <input type="text" id="f_id" class="mono" placeholder="유형 입력 시 자동"></label>
+        </div>
+        <div class="grid2">
+          <label class="fld"><span>적용 시작 입대일</span>
+            <input type="text" id="f_from" class="mono" placeholder="YYYY-MM-DD"></label>
+          <label class="fld"><span>종료 입대일</span>
+            <input type="text" id="f_to" class="mono" placeholder="YYYY-MM-DD">
+            <span class="chk" style="margin-top:6px"><input type="checkbox" id="f_ongoing"> 폐지 없이 진행 중 (null)</span>
+          </label>
+        </div>
+        <label class="fld" style="margin-bottom:0"><span>비고</span>
+          <textarea id="f_note" placeholder="예: 육군과 동일한 의무복무기간 / 변화 없음"></textarea></label>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="head"><h2>복무구분</h2><span class="idx">전역방식 결정</span></div>
+      <div class="body">
+        <div class="divisions" id="divisions"></div>
+        <span class="hint">병역의무(병/요원)는 단독. 임기제·단기·장기는 함께 선택(간부). 선택한 구분마다 아래 기간규칙에서 개월수를 입력합니다.</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="head"><h2>계급</h2><span class="idx">진급 순서</span></div>
+      <div class="body">
+        <div class="ranks" id="ranks"></div>
+        <div class="addbar"><button class="ghost mini" id="addRank">+ 계급 추가</button>
+          <span class="hint" style="margin-top:0; display:inline; margin-left:8px">계급이 없으면 모두 비워두세요 (예: 승선복무예비역)</span></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="head"><h2>의무복무 참조</h2><span class="idx">선택</span></div>
+      <div class="body">
+        <label class="fld" style="margin-bottom:0"><span>다른 유형 id를 그대로 따를 때만 입력</span>
+          <input type="text" id="f_ref" class="mono" placeholder="비워두면 아래 기간규칙을 직접 작성">
+          <span class="hint">입력하면 기간규칙은 비워지고, 참조 유형의 의무복무·진급을 계급 순서대로 적용합니다.</span></label>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="head"><h2>기간규칙</h2><span class="idx">입대일 버전</span></div>
+      <div class="body">
+        <div class="rules" id="rules"></div>
+        <div class="addbar"><button class="ghost mini" id="addRule">+ 기간규칙 추가</button></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ════ SIDE ════ -->
+  <div style="display:flex; flex-direction:column; gap:20px; position:sticky; top:84px">
+    <section class="panel preview">
+      <div class="head"><h2>미리보기</h2><span class="idx" id="modeLabel">새 객체</span>
+        <div style="margin-left:auto; display:flex; gap:6px">
+          <button class="mini" id="copyJson">JSON 복사</button>
+          <button class="primary mini" id="saveObj">목록에 추가</button>
+        </div>
+      </div>
+      <div class="body"><pre id="preview"></pre></div>
+      <div class="valid" id="valid"></div>
+    </section>
+
+    <section class="panel">
+      <div class="tabs">
+        <button class="on" data-tab="list">목록 <span id="countBadge" class="pill">0</span></button>
+        <button data-tab="export">내보내기</button>
+        <button data-tab="import">가져오기</button>
+      </div>
+      <div class="tabpane" data-pane="list">
+        <div class="saved" id="saved"></div>
+      </div>
+      <div class="tabpane" data-pane="export" hidden>
+        <p class="hint" style="margin-top:0">목록에 저장된 모든 유형을 묶어서 내보냅니다.</p>
+        <div class="row-inline" style="flex-wrap:wrap">
+          <button class="brass" id="dlJson">JSON 내려받기</button>
+          <button id="dlTs">TS 내려받기</button>
+          <button class="ghost" id="copyAll">전체 JSON 복사</button>
+        </div>
+      </div>
+      <div class="tabpane" data-pane="import" hidden>
+        <p class="hint" style="margin-top:0">내보낸 JSON 배열을 붙여넣고 불러오면 목록이 교체됩니다.</p>
+        <textarea id="importBox" style="min-height:120px" class="mono" placeholder="[ { ... }, { ... } ]"></textarea>
+        <div class="addbar"><button class="primary" id="doImport">불러오기</button></div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script>
+"use strict";
+/* ───────── 상태 ───────── */
+const blank = () => ({
+  id:"", 신분:"병/요원", 역종:"현역", 유형:"", 군별:"육군",
+  from:"", to:"", 진행중:false,
+  계급:[], 참조:"", 비고:"",
+  복무구분:['병역의무'],
+  rules:[]   // { 적용일, 의무복무:{병역의무?|임기제{최소,최대,단위}|단기?|장기?}, promo:[] }
+});
+let S = blank();
+let saved = [];
+let editIndex = -1;   // -1 = 새 객체
+
+const $ = s => document.querySelector(s);
+
+/* ───────── 입력 바인딩 (스칼라) ───────── */
+const bind = (id, key, ev="input") => {
+  const el = $(id);
+  el.addEventListener(ev, () => {
+    S[key] = el.type === "checkbox" ? el.checked : el.value;
+    if(id==="#f_ref") renderRules();
+    updatePreview();
+  });
+};
+bind("#f_status","신분","change"); bind("#f_cat","역종","change");
+bind("#f_branch","군별","change");
+bind("#f_from","from"); bind("#f_to","to");
+bind("#f_note","비고"); bind("#f_ref","참조");
+
+let idTouched=false;
+$("#f_type").addEventListener("input",()=>{
+  S.유형=$("#f_type").value;
+  if(!idTouched){ S.id=deriveId(); $("#f_id").value=S.id; }
+  updatePreview();
+});
+$("#f_id").addEventListener("input",()=>{
+  S.id=$("#f_id").value;
+  idTouched = S.id.trim()!=="";   // 비우면 다시 자동 생성
+  updatePreview();
+});
+$("#f_ongoing").addEventListener("change", e=>{ S.진행중=e.target.checked; $("#f_to").disabled=e.target.checked; updatePreview(); });
+
+/* ───────── 계급 ───────── */
+function renderRanks(){
+  const box = $("#ranks"); box.innerHTML="";
+  if(S.계급.length===0){
+    box.innerHTML = `<div class="empty-note">계급 없음 — 진급 단계가 없는 유형입니다.</div>`; return;
+  }
+  S.계급.forEach((nm,i)=>{
+    const last = i===S.계급.length-1;
+    const row=document.createElement("div"); row.className="rank-row";
+    row.innerHTML=`<span class="ord">${i+1}</span>
+      <input type="text" value="${esc(nm)}" placeholder="계급명">
+      ${last?'<span class="tag">나머지</span>':''}
+      <button class="ghost mini" data-up ${i===0?'disabled':''}>↑</button>
+      <button class="ghost mini" data-down ${last?'disabled':''}>↓</button>
+      <button class="danger mini" data-del>✕</button>`;
+    const inp=row.querySelector("input");
+    inp.addEventListener("input",()=>{ S.계급[i]=inp.value; renderRules(); updatePreview(); });
+    row.querySelector("[data-up]").addEventListener("click",()=>moveRank(i,-1));
+    row.querySelector("[data-down]").addEventListener("click",()=>moveRank(i,1));
+    row.querySelector("[data-del]").addEventListener("click",()=>delRank(i));
+    box.appendChild(row);
+  });
+}
+function addRank(){ S.계급.push(""); S.rules.forEach(r=>r.promo.push(0)); renderRanks(); renderRules(); updatePreview(); }
+function delRank(i){ S.계급.splice(i,1); S.rules.forEach(r=>r.promo.splice(i,1)); renderRanks(); renderRules(); updatePreview(); }
+function moveRank(i,d){ const j=i+d; if(j<0||j>=S.계급.length)return;
+  [S.계급[i],S.계급[j]]=[S.계급[j],S.계급[i]];
+  S.rules.forEach(r=>[r.promo[i],r.promo[j]]=[r.promo[j],r.promo[i]]);
+  renderRanks(); renderRules(); updatePreview(); }
+$("#addRank").addEventListener("click",addRank);
+
+/* ───────── 복무구분 ───────── */
+const 복무구분목록=['병역의무','임기제','단기','장기'];
+function renderDivisions(){
+  const box=$("#divisions"); if(!box)return; box.innerHTML="";
+  const has병역=S.복무구분.includes('병역의무');
+  const has간부=S.복무구분.some(x=>x!=='병역의무');
+  복무구분목록.forEach(d=>{
+    const on=S.복무구분.includes(d);
+    const disabled = d==='병역의무' ? has간부 : has병역;
+    const lab=document.createElement('label');
+    lab.className='div-chk'+(on?' on':'')+(disabled?' off':'');
+    lab.innerHTML=`<input type="checkbox" ${on?'checked':''} ${disabled?'disabled':''}> ${d}`;
+    lab.querySelector('input').addEventListener('change',e=>toggleDivision(d,e.target.checked));
+    box.appendChild(lab);
+  });
+}
+function toggleDivision(d,on){
+  if(on){ if(!S.복무구분.includes(d)) S.복무구분.push(d); }
+  else S.복무구분=S.복무구분.filter(x=>x!==d);
+  S.복무구분.sort((a,b)=>복무구분목록.indexOf(a)-복무구분목록.indexOf(b));
+  S.rules.forEach(ensureRuleDivs);
+  renderDivisions(); renderRules(); updatePreview();
+}
+function ensureRuleDivs(r){
+  r.의무복무=r.의무복무||{};
+  S.복무구분.forEach(d=>{
+    if(d==='임기제'){ if(!r.의무복무.임기제||typeof r.의무복무.임기제!=='object') r.의무복무.임기제={최소:'',최대:'',단위:'1'}; }
+    else if(r.의무복무[d]==null) r.의무복무[d]='';
+  });
+}
+
+/* ───────── 기간규칙 ───────── */
+function fixedSum(r){ let s=0; for(let i=0;i<S.계급.length-1;i++) s+=Number(r.promo[i])||0; return s; }
+function remainder(r){ return (Number(r.의무복무?.병역의무)||0) - fixedSum(r); }
+function dutyIssues(r){
+  const order=['임기제','단기','장기'].filter(k=>S.복무구분.includes(k));
+  const ceil=k=> k==='임기제' ? Number(r.의무복무?.임기제?.최대)||0 : Number(r.의무복무?.[k])||0;
+  const p=[];
+  for(let i=1;i<order.length;i++) if(ceil(order[i-1])>ceil(order[i])) p.push(`${order[i-1]}>${order[i]}`);
+  const im=r.의무복무?.임기제;
+  if(S.복무구분.includes('임기제')&&im&&Number(im.최소)>Number(im.최대)) p.push('임기제 최소>최대');
+  return p;
+}
+
+function renderRules(){
+  const box=$("#rules"); box.innerHTML="";
+  if(S.참조.trim()){
+    box.innerHTML=`<div class="ref-lock">참조 <b>${esc(S.참조.trim())}</b> 사용 중 — 기간규칙은 비워지고 참조 유형의 값을 계급 순서대로 적용합니다.</div>`;
+    return;
+  }
+  if(S.복무구분.length===0){ box.innerHTML=`<div class="empty-note">먼저 복무구분을 선택하세요.</div>`; return; }
+  if(S.rules.length===0){ box.innerHTML=`<div class="empty-note">아직 기간규칙이 없습니다. ‘+ 기간규칙 추가’로 시작하세요.</div>`; }
+  const 병=S.복무구분.includes('병역의무');
+  S.rules.forEach((r,k)=>{
+    ensureRuleDivs(r);
+    const el=document.createElement("div"); el.className="rule";
+    const dutiesHtml=`<div class="duties">`+ S.복무구분.map(d=>{
+      if(d==='임기제'){ const im=r.의무복무.임기제||{};
+        return `<div class="div-row"><span class="dlab">임기제</span>
+          <input class="dnum" inputmode="numeric" value="${esc(im.최소)}" data-im="최소" placeholder="최소"><span class="u">~</span>
+          <input class="dnum" inputmode="numeric" value="${esc(im.최대)}" data-im="최대" placeholder="최대"><span class="u">개월 ·</span>
+          <input class="dnum" inputmode="numeric" value="${esc(im.단위)}" data-im="단위"><span class="u">개월 단위</span></div>`;
+      }
+      return `<div class="div-row"><span class="dlab">${d}</span>
+        <input class="dnum" inputmode="numeric" value="${esc(r.의무복무[d])}" data-duty="${d}"><span class="u">개월</span></div>`;
+    }).join("")+`</div>`;
+
+    let promosHtml="";
+    if(!병){
+      promosHtml=`<div class="empty-note" style="padding:2px 0">간부 — 진급은 진급최저복무표가 담당(기간규칙엔 진급 안 넣음)</div>`;
+    } else if(S.계급.length===0){
+      promosHtml=`<div class="empty-note" style="padding:2px 0">계급이 없어 진급 단계 없음 (계급별진급: [])</div>`;
+    } else {
+      promosHtml=`<div class="promos">`+ S.계급.map((nm,i)=>{
+        const last=i===S.계급.length-1;
+        if(last) return `<div class="promo remainder" data-rem><span class="o">${i+1}</span>
+          <span class="nm">${esc(nm||"(계급)")}</span><span class="val">—</span><span class="u">나머지</span></div>`;
+        return `<div class="promo"><span class="o">${i+1}</span>
+          <span class="nm">${esc(nm||"(계급)")}</span>
+          <input type="text" inputmode="numeric" value="${r.promo[i]??""}" data-pi="${i}"><span class="u">개월</span></div>`;
+      }).join("")+`</div>`;
+    }
+
+    el.innerHTML=`
+      <div class="rhead"><span class="n">v${k+1}</span>
+        <span class="when"><input type="text" class="mono" value="${esc(r.적용일)}" placeholder="적용일 YYYY-MM-DD" data-when>
+          <span style="font-size:11px;color:var(--faint)">부터</span></span>
+        <button class="danger mini" data-delrule>삭제</button></div>
+      <div class="rbody">${dutiesHtml}${promosHtml}</div>`;
+    el.querySelector("[data-when]").addEventListener("input",e=>{ r.적용일=e.target.value; updatePreview(); });
+    el.querySelectorAll("[data-duty]").forEach(inp=>inp.addEventListener("input",()=>{ r.의무복무[inp.dataset.duty]=inp.value; refreshRemainder(el,r); updatePreview(); }));
+    el.querySelectorAll("[data-im]").forEach(inp=>inp.addEventListener("input",()=>{ r.의무복무.임기제=r.의무복무.임기제||{}; r.의무복무.임기제[inp.dataset.im]=inp.value; updatePreview(); }));
+    el.querySelectorAll("[data-pi]").forEach(inp=>inp.addEventListener("input",()=>{ r.promo[Number(inp.dataset.pi)]=inp.value; refreshRemainder(el,r); updatePreview(); }));
+    el.querySelector("[data-delrule]").addEventListener("click",()=>{ S.rules.splice(k,1); renderRules(); updatePreview(); });
+    box.appendChild(el);
+    refreshRemainder(el,r);
+  });
+}
+function refreshRemainder(el,r){
+  const rem=el.querySelector("[data-rem]"); if(!rem)return;
+  const v=remainder(r);
+  rem.querySelector(".val").textContent = isFinite(v)? v : "—";
+  rem.classList.toggle("warn", !(v>0));
+}
+function addRule(){ const r={적용일:"",의무복무:{},promo:S.계급.map(()=>0)}; ensureRuleDivs(r); S.rules.push(r); renderRules(); updatePreview(); }
+$("#addRule").addEventListener("click",addRule);
+
+/* ───────── 객체 빌드 ───────── */
+function deriveId(){ return (S.유형||"").trim().replace(/\s+/g,"-"); }
+function autoId(){ return (S.id && S.id.trim()) ? S.id.trim() : deriveId(); }
+function build(){
+  const o={
+    id:autoId(), 신분:S.신분, 역종:S.역종, 유형:S.유형,
+    군별:S.군별==="없음"?null:S.군별,
+    적용입대일:{ from:S.from, to:S.진행중?null:(S.to||null) },
+    계급:[...S.계급]
+  };
+  if(S.참조.trim()){ o.기간규칙=[]; o.의무복무참조=S.참조.trim(); }
+  else{
+    const 병=S.복무구분.includes('병역의무');
+    o.기간규칙=S.rules.map(r=>{
+      const 의무복무={};
+      S.복무구분.forEach(d=>{
+        if(d==='임기제'){ const im=r.의무복무?.임기제||{};
+          의무복무.임기제={최소:Number(im.최소)||0,최대:Number(im.최대)||0,단위:Number(im.단위)||1}; }
+        else 의무복무[d]=Number(r.의무복무?.[d])||0;
+      });
+      const row={ 적용일:r.적용일, 의무복무 };
+      row.계급별진급 = 병
+        ? S.계급.map((nm,i)=> i===S.계급.length-1
+            ? {계급:nm, 복무개월:"나머지"} : {계급:nm, 복무개월:Number(r.promo[i])||0})
+        : [];
+      return row;
+    });
+  }
+  o.비고=S.비고||"";
+  return o;
+}
+
+/* ───────── 미리보기 + 검증 ───────── */
+function updatePreview(){
+  const obj=build();
+  $("#preview").innerHTML=highlight(JSON.stringify(obj,null,2));
+  const v=$("#valid"); const issues=validate();
+  if(issues.length){ v.className="valid bad"; v.textContent="⚠ "+issues.join(" · "); }
+  else{ v.className="valid ok"; v.textContent="✓ 유효한 객체입니다."; }
+}
+function validate(){
+  const e=[];
+  if(!S.유형.trim()) e.push("유형 필요");
+  if(!S.from.trim()) e.push("적용 시작 입대일 필요");
+  if(!S.참조.trim() && S.복무구분.length===0) e.push("복무구분 필요");
+  if(!S.참조.trim() && S.rules.length===0) e.push("기간규칙 또는 참조 필요");
+  if(!S.참조.trim()){
+    const 병=S.복무구분.includes('병역의무');
+    S.rules.forEach((r,k)=>{
+      dutyIssues(r).forEach(p=>e.push(`v${k+1} ${p}`));
+      if(병 && S.계급.length>0 && !(remainder(r)>0)) e.push(`v${k+1} 나머지 0 이하`);
+    });
+  }
+  return e;
+}
+function highlight(j){
+  return j.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"([^"]+)":/g,'<span class="k">"$1"</span>:')
+    .replace(/: (-?\d+\.?\d*)/g,': <span class="n">$1</span>')
+    .replace(/\b(null|true|false)\b/g,'<span class="b">$1</span>');
+}
+const esc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+
+/* ───────── 폼 ↔ 상태 ───────── */
+function loadForm(){
+  $("#f_status").value=S.신분; $("#f_cat").value=S.역종; $("#f_branch").value=S.군별;
+  $("#f_type").value=S.유형; $("#f_id").value=S.id; $("#f_from").value=S.from;
+  $("#f_to").value=S.to; $("#f_ongoing").checked=S.진행중; $("#f_to").disabled=S.진행중;
+  $("#f_note").value=S.비고; $("#f_ref").value=S.참조;
+  idTouched = !!(S.id && S.id.trim());
+  renderDivisions(); renderRanks(); renderRules(); updatePreview();
+  $("#modeLabel").textContent = editIndex>=0 ? `#${editIndex+1} 수정 중` : "새 객체";
+  $("#saveObj").textContent = editIndex>=0 ? "수정 저장" : "목록에 추가";
+}
+function fromObject(o){
+  const st=blank();
+  st.id=o.id||""; st.신분=o.신분||"병/요원"; st.역종=o.역종||"현역"; st.유형=o.유형||"";
+  st.군별=o.군별===null?"없음":(o.군별||"육군");
+  st.from=o.적용입대일?.from||""; st.진행중=o.적용입대일?.to===null;
+  st.to=o.적용입대일?.to||""; st.계급=[...(o.계급||[])]; st.비고=o.비고||"";
+  st.참조=o.의무복무참조||"";
+  const keys=new Set();
+  (o.기간규칙||[]).forEach(r=>{
+    if(r.의무복무) Object.keys(r.의무복무).forEach(k=>keys.add(k));
+    else if(r.의무복무개월!=null) keys.add('병역의무');   // 구버전 호환
+  });
+  st.복무구분=복무구분목록.filter(k=>keys.has(k));
+  if(st.복무구분.length===0) st.복무구분=['병역의무'];
+  st.rules=(o.기간규칙||[]).map(r=>{
+    const dm=r.의무복무 || (r.의무복무개월!=null?{병역의무:r.의무복무개월}:{});
+    const 의무복무={};
+    ['병역의무','단기','장기'].forEach(k=>{ if(dm[k]!=null) 의무복무[k]=String(dm[k]); });
+    if(dm.임기제) 의무복무.임기제={최소:String(dm.임기제.최소??''),최대:String(dm.임기제.최대??''),단위:String(dm.임기제.단위??'1')};
+    const promo=st.계급.map((_,i)=>{ const p=r.계급별진급?.[i]; return (p && typeof p.복무개월==="number")?p.복무개월:0; });
+    return {적용일:r.적용일||"", 의무복무, promo};
+  });
+  return st;
+}
+
+/* ───────── 목록 ───────── */
+function saveCurrent(){
+  if(validate().length){ if(!confirm("검증 경고가 있습니다. 그래도 저장할까요?")) return; }
+  const obj=build();
+  if(editIndex>=0) saved[editIndex]=obj; else saved.push(obj);
+  editIndex=-1; S=blank(); loadForm(); renderSaved();
+}
+$("#saveObj").addEventListener("click",saveCurrent);
+$("#resetForm").addEventListener("click",()=>{ editIndex=-1; S=blank(); loadForm(); });
+
+function renderSaved(){
+  const box=$("#saved"); box.innerHTML=""; $("#countBadge").textContent=saved.length;
+  if(saved.length===0){ box.innerHTML=`<div class="empty">아직 저장된 유형이 없습니다.</div>`; return; }
+  saved.forEach((o,i)=>{
+    const it=document.createElement("div"); it.className="item"+(i===editIndex?" editing":"");
+    const branch=o.군별===null?"—":o.군별;
+    it.innerHTML=`<span class="pill">${i+1}</span>
+      <div class="meta"><div class="ttl">${esc(o.유형||"(유형)")}</div>
+        <div class="sub">${esc(o.역종)} · ${esc(branch)} · ${esc(o.id)}</div></div>
+      <button class="ghost mini" data-edit>편집</button>
+      <button class="ghost mini" data-dup>복제</button>
+      <button class="danger mini" data-del>삭제</button>`;
+    it.querySelector("[data-edit]").addEventListener("click",()=>{ editIndex=i; S=fromObject(saved[i]); loadForm(); renderSaved(); window.scrollTo({top:0,behavior:"smooth"}); });
+    it.querySelector("[data-dup]").addEventListener("click",()=>{ const c=JSON.parse(JSON.stringify(saved[i])); c.id=(c.id||"copy")+"-copy"; saved.splice(i+1,0,c); renderSaved(); });
+    it.querySelector("[data-del]").addEventListener("click",()=>{ saved.splice(i,1); if(editIndex===i)editIndex=-1; if(editIndex>i)editIndex--; loadForm(); renderSaved(); });
+    box.appendChild(it);
+  });
+}
+
+/* ───────── 내보내기 / 가져오기 ───────── */
+function allJson(){ return JSON.stringify(saved,null,2); }
+function download(name,text,type){ const b=new Blob([text],{type}); const u=URL.createObjectURL(b);
+  const a=document.createElement("a"); a.href=u; a.download=name; a.click(); URL.revokeObjectURL(u); }
+async function copy(text){ try{ await navigator.clipboard.writeText(text); flash("복사됨"); }catch{ flash("복사 실패",true); } }
+function flash(msg,bad){ const v=$("#valid"); const o=v.textContent,c=v.className; v.textContent=(bad?"✕ ":"✓ ")+msg; setTimeout(()=>{v.textContent=o;v.className=c;},1100); }
+
+$("#copyJson").addEventListener("click",()=>copy(JSON.stringify(build(),null,2)));
+$("#copyAll").addEventListener("click",()=>{ if(!saved.length)return flash("목록이 비어있음",true); copy(allJson()); });
+$("#dlJson").addEventListener("click",()=>{ if(!saved.length)return flash("목록이 비어있음",true); download("service-types.json",allJson(),"application/json"); });
+$("#dlTs").addEventListener("click",()=>{ if(!saved.length)return flash("목록이 비어있음",true);
+  download("service-types.ts","export const 복무유형목록 = "+allJson()+" as const;\n","text/typescript"); });
+$("#doImport").addEventListener("click",()=>{
+  try{ const arr=JSON.parse($("#importBox").value); if(!Array.isArray(arr))throw 0;
+    saved=arr; editIndex=-1; S=blank(); loadForm(); renderSaved(); flash(`${arr.length}건 불러옴`);
+    document.querySelector('[data-tab="list"]').click();
+  }catch{ flash("JSON 형식 오류",true); }
+});
+
+/* ───────── 탭 ───────── */
+document.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("on",x===b));
+  document.querySelectorAll(".tabpane").forEach(p=>p.hidden = p.dataset.pane!==b.dataset.tab);
+}));
+
+/* ───────── 예시 ───────── */
+$("#loadSample").addEventListener("click",()=>{
+  editIndex=-1;
+  S=fromObject({
+    id:"army-active", 신분:"병/요원", 역종:"현역", 유형:"현역병", 군별:"육군",
+    적용입대일:{from:"1900-01-01",to:null}, 계급:["이등병","일병","상병","병장"],
+    기간규칙:[
+      {적용일:"1900-01-01",의무복무:{병역의무:24},계급별진급:[
+        {계급:"이등병",복무개월:5},{계급:"일병",복무개월:8},{계급:"상병",복무개월:8},{계급:"병장",복무개월:"나머지"}]},
+      {적용일:"20XX-XX-XX",의무복무:{병역의무:18},계급별진급:[
+        {계급:"이등병",복무개월:2},{계급:"일병",복무개월:6},{계급:"상병",복무개월:6},{계급:"병장",복무개월:"나머지"}]}
+    ], 비고:""
+  });
+  loadForm();
+});
+$("#loadSample2").addEventListener("click",()=>{
+  editIndex=-1;
+  S=fromObject({
+    id:"nco-fixed-term", 신분:"부사관", 역종:"현역", 유형:"임기제부사관", 군별:"육군",
+    적용입대일:{from:"2000-01-01",to:null}, 계급:["하사","중사","상사","원사"],
+    기간규칙:[
+      {적용일:"2000-01-01",의무복무:{임기제:{최소:6,최대:48,단위:1},단기:48,장기:120},계급별진급:[]}
+    ], 비고:"임기제 6개월 최소, 단기·장기 전환 가능 (개월수는 예시)"
+  });
+  loadForm();
+});
+
+/* init */
+loadForm(); renderSaved();
+</script>
+</body>
 </html>
