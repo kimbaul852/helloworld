@@ -169,6 +169,7 @@
     <button class="ghost mini" id="loadSample">현역병 예시</button>
     <button class="ghost mini" id="loadSample2">임기제부사관 예시</button>
     <button class="brass mini" id="loadConscript">현역병 80~현행 일괄</button>
+    <button class="brass mini" id="loadAlt">상근·전환복무 일괄</button>
     <button class="ghost mini" id="resetForm">새로 만들기</button>
   </div>
 </header>
@@ -659,28 +660,36 @@ $("#loadSample2").addEventListener("click",()=>{
   loadForm();
 });
 
+/* ───────── 공용: 기간규칙 생성 ─────────
+   steps: [입대일, 의무복무개월] (동결값 기준). 의무복무∪진급 변경일을 합쳐 구간 생성.
+   ranks: [1~4계급 이름]. 1~3계급은 진급소요표, 4계급은 '나머지'. */
+function buildRules(steps, ranks){
+  const first=steps[0][0];
+  const ds=new Set(steps.map(s=>s[0]));
+  진급소요.forEach(p=>{ if(p.from>=first) ds.add(p.from); });   // 진급 변경일도 경계로 추가
+  const monthsAt=d=>{ let m; for(const s of steps){ if(s[0]<=d) m=s[1]; else break; } return m; };
+  return [...ds].sort().map(d=>{
+    const pr=promoFor(parseD(d));   // 그 시점의 표준 진급값
+    return {적용일:d,의무복무:{병역의무:monthsAt(d)},계급별진급:[
+      {계급:ranks[0],복무개월:pr.이},{계급:ranks[1],복무개월:pr.일},
+      {계급:ranks[2],복무개월:pr.상},{계급:ranks[3],복무개월:"나머지"}]};
+  });
+}
+// steps 중 from 이후 구간만 + from 시점 동결값으로 시작
+const stepsFrom=(steps,from)=>{
+  let v; for(const s of steps){ if(s[0]<=from) v=s[1]; else break; }
+  return [[from,v],...steps.filter(s=>s[0]>from)];
+};
+const 육군steps=[["1984-01-01",30],["1993-01-01",26],["2003-10-01",24],
+  ["2011-02-27",21],["2020-06-02",18]];
+
 /* ───────── 현역병 80년대~현행 일괄 ───────── */
 $("#loadConscript").addEventListener("click",()=>{
-  // steps: [입대일, 의무복무개월] (동결값 기준). 의무복무∪진급 변경일을 합쳐 구간 생성.
-  const mkRules=(steps)=>{
-    const first=steps[0][0];
-    const ds=new Set(steps.map(s=>s[0]));
-    진급소요.forEach(p=>{ if(p.from>=first) ds.add(p.from); });   // 진급 변경일도 경계로 추가
-    const monthsAt=d=>{ let m; for(const s of steps){ if(s[0]<=d) m=s[1]; else break; } return m; };
-    return [...ds].sort().map(d=>{
-      const pr=promoFor(parseD(d));   // 그 시점의 표준 진급값
-      return {적용일:d,의무복무:{병역의무:monthsAt(d)},계급별진급:[
-        {계급:"이등병",복무개월:pr.이},{계급:"일병",복무개월:pr.일},
-        {계급:"상병",복무개월:pr.상},{계급:"병장",복무개월:"나머지"}]};
-    });
-  };
+  const 병=["이등병","일병","상병","병장"];
   const 비고="단축(노무현·국방개혁 2.0) 점진 구간은 '전역일 계산' 탭에서 일단위로 계산. "+
     "목록 객체의 의무복무는 동결값 기준, 진급은 표준 진급(입대일 기준).";
   const mk=(id,군별,steps)=>({id,신분:"병/요원",역종:"현역",유형:"현역병",군별,
-    적용입대일:{from:"1984-01-01",to:null},
-    계급:["이등병","일병","상병","병장"],기간규칙:mkRules(steps),비고});
-  const 육군steps=[["1984-01-01",30],["1993-01-01",26],["2003-10-01",24],
-    ["2011-02-27",21],["2020-06-02",18]];
+    적용입대일:{from:"1984-01-01",to:null},계급:병,기간규칙:buildRules(steps,병),비고});
   const objs=[
     mk("army-active","육군",육군steps),
     mk("navy-active","해군",[["1984-01-01",35],["1990-01-01",32],["1993-01-01",30],
@@ -694,6 +703,37 @@ $("#loadConscript").addEventListener("click",()=>{
   editIndex=-1; renderSaved();
   document.querySelector('[data-tab="list"]').click();
   flash(`현역병 ${objs.length}건 추가됨`);
+});
+
+/* ───────── 상근예비역 · 전환복무 일괄 ─────────
+   상근예비역: 육군 현역병과 복무·계급·진급 동일.
+   전환복무(의경·의무소방·해경): 육군 차출 → 복무·진급은 육군 병 기준 매핑(추정), 계급명만 고유. */
+$("#loadAlt").addEventListener("click",()=>{
+  const 경=["이경","일경","상경","수경"];      // 의무경찰/해양경찰
+  const 방=["이방","일방","상방","수방"];      // 의무소방원
+  const objs=[
+    {id:"reserve-active",신분:"병",역종:"예비역",유형:"상근예비역",군별:"육군",
+     적용입대일:{from:"1995-01-01",to:null},계급:["이등병","일병","상병","병장"],
+     기간규칙:buildRules(stepsFrom(육군steps,"1995-01-01"),["이등병","일병","상병","병장"]),
+     비고:"육군 현역병과 복무·계급·진급 동일(출퇴근 복무). 1995년 제도 도입."},
+    {id:"aux-police",신분:"병",역종:"전환복무",유형:"전환복무",군별:"의무경찰",
+     적용입대일:{from:"1984-01-01",to:"2021-12-31"},계급:경,
+     기간규칙:buildRules(육군steps,경),
+     비고:"육군 입영 후 차출. 복무기간·진급소요는 육군 병 기준 매핑(추정). 2023년 제도 폐지."},
+    {id:"aux-fire",신분:"병",역종:"전환복무",유형:"전환복무",군별:"의무소방",
+     적용입대일:{from:"2002-01-01",to:"2021-12-31"},계급:방,
+     기간규칙:buildRules(stepsFrom(육군steps,"2002-01-01"),방),
+     비고:"2002년 도입~2023년 폐지. 복무·진급은 육군 병 기준 매핑(추정)."},
+    {id:"aux-coastguard",신분:"병",역종:"전환복무",유형:"전환복무",군별:"의무해양경찰",
+     적용입대일:{from:"1984-01-01",to:"2021-12-31"},계급:경,
+     기간규칙:buildRules(육군steps,경),
+     비고:"해양경찰 전환복무. 복무·진급은 육군 병 기준 매핑(추정). 2023년 폐지."},
+  ];
+  const ids=new Set(objs.map(o=>o.id));
+  saved=saved.filter(o=>!ids.has(o.id)).concat(objs);
+  editIndex=-1; renderSaved();
+  document.querySelector('[data-tab="list"]').click();
+  flash(`상근·전환복무 ${objs.length}건 추가됨`);
 });
 
 /* ───────── 전역일 계산기 (단축식 반영) ───────── */
