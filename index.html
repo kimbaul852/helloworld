@@ -168,7 +168,7 @@
   <div class="actions">
     <button class="ghost mini" id="loadSample">현역병 예시</button>
     <button class="ghost mini" id="loadSample2">임기제부사관 예시</button>
-    <button class="brass mini" id="loadConscript">현역병 80~현행 일괄</button>
+    <button class="brass mini" id="loadConscript">현역병 2003~현행 일괄</button>
     <button class="brass mini" id="loadAlt">상근·전환복무 일괄</button>
     <button class="ghost mini" id="resetForm">새로 만들기</button>
   </div>
@@ -285,7 +285,7 @@
         <div class="addbar"><button class="primary" id="doImport">불러오기</button></div>
       </div>
       <div class="tabpane" data-pane="calc" hidden>
-        <p class="hint" style="margin-top:0">현역병 입대일을 넣으면 단축식까지 반영해 정확한 복무기간·전역일을 계산합니다. (1984-01-01 이후)</p>
+        <p class="hint" style="margin-top:0">현역병 입대일을 넣으면 단축식까지 반영해 정확한 복무기간·전역일을 계산합니다. (2003-10-01 이후)</p>
         <div class="grid2">
           <label class="fld"><span>군별</span>
             <select id="calc_branch"><option>육군</option><option>해군</option><option>공군</option><option>해병대</option></select></label>
@@ -675,27 +675,19 @@ function buildRules(steps, ranks){
       {계급:ranks[2],복무개월:pr.상},{계급:ranks[3],복무개월:"나머지"}]};
   });
 }
-// steps 중 from 이후 구간만 + from 시점 동결값으로 시작
-const stepsFrom=(steps,from)=>{
-  let v; for(const s of steps){ if(s[0]<=from) v=s[1]; else break; }
-  return [[from,v],...steps.filter(s=>s[0]>from)];
-};
-const 육군steps=[["1984-01-01",30],["1993-01-01",26],["2003-10-01",24],
-  ["2011-02-27",21],["2020-06-02",18]];
+const 육군steps=[["2003-10-01",24],["2011-02-27",21],["2020-06-02",18]];
 
-/* ───────── 현역병 80년대~현행 일괄 ───────── */
+/* ───────── 현역병 2003~현행 일괄 ───────── */
 $("#loadConscript").addEventListener("click",()=>{
   const 병=["이등병","일병","상병","병장"];
   const 비고="단축(노무현·국방개혁 2.0) 점진 구간은 '전역일 계산' 탭에서 일단위로 계산. "+
-    "목록 객체의 의무복무는 동결값 기준, 진급은 표준 진급(입대일 기준).";
+    "목록 객체의 의무복무는 동결값 기준, 진급은 표준 진급(입대일 기준). 기준: 2003-10(24개월화) 이후.";
   const mk=(id,군별,steps)=>({id,신분:"병/요원",역종:"현역",유형:"현역병",군별,
-    적용입대일:{from:"1984-01-01",to:null},계급:병,기간규칙:buildRules(steps,병),비고});
+    적용입대일:{from:"2003-10-01",to:null},계급:병,기간규칙:buildRules(steps,병),비고});
   const objs=[
     mk("army-active","육군",육군steps),
-    mk("navy-active","해군",[["1984-01-01",35],["1990-01-01",32],["1993-01-01",30],
-      ["1994-01-01",28],["2003-10-01",26],["2011-01-03",23],["2020-06-02",20]]),
-    mk("airforce-active","공군",[["1984-01-01",35],["1993-01-01",30],["2003-10-01",28],
-      ["2004-01-01",27],["2011-01-01",24],["2020-06-02",21]]),
+    mk("navy-active","해군",[["2003-10-01",26],["2011-01-03",23],["2020-06-02",20]]),
+    mk("airforce-active","공군",[["2003-10-01",28],["2011-01-01",24],["2020-06-02",21]]),
     mk("marine-active","해병대",육군steps),
   ];
   const ids=new Set(objs.map(o=>o.id));          // 같은 id는 교체(중복 방지)
@@ -713,19 +705,19 @@ $("#loadAlt").addEventListener("click",()=>{
   const 방=["이방","일방","상방","수방"];      // 의무소방원
   const objs=[
     {id:"reserve-active",신분:"병",역종:"예비역",유형:"상근예비역",군별:"육군",
-     적용입대일:{from:"1995-01-01",to:null},계급:["이등병","일병","상병","병장"],
-     기간규칙:buildRules(stepsFrom(육군steps,"1995-01-01"),["이등병","일병","상병","병장"]),
-     비고:"육군 현역병과 복무·계급·진급 동일(출퇴근 복무). 1995년 제도 도입."},
+     적용입대일:{from:"2003-10-01",to:null},계급:["이등병","일병","상병","병장"],
+     기간규칙:buildRules(육군steps,["이등병","일병","상병","병장"]),
+     비고:"육군 현역병과 복무·계급·진급 동일(출퇴근 복무). 기준: 2003-10 이후."},
     {id:"aux-police",신분:"병",역종:"전환복무",유형:"전환복무",군별:"의무경찰",
-     적용입대일:{from:"1984-01-01",to:"2021-12-31"},계급:경,
+     적용입대일:{from:"2003-10-01",to:"2021-12-31"},계급:경,
      기간규칙:buildRules(육군steps,경),
      비고:"육군 입영 후 차출. 복무기간·진급소요는 육군 병 기준 매핑(추정). 2023년 제도 폐지."},
     {id:"aux-fire",신분:"병",역종:"전환복무",유형:"전환복무",군별:"의무소방",
-     적용입대일:{from:"2002-01-01",to:"2021-12-31"},계급:방,
-     기간규칙:buildRules(stepsFrom(육군steps,"2002-01-01"),방),
-     비고:"2002년 도입~2023년 폐지. 복무·진급은 육군 병 기준 매핑(추정)."},
+     적용입대일:{from:"2003-10-01",to:"2021-12-31"},계급:방,
+     기간규칙:buildRules(육군steps,방),
+     비고:"의무소방(2002 도입~2023 폐지). 복무·진급은 육군 병 기준 매핑(추정)."},
     {id:"aux-coastguard",신분:"병",역종:"전환복무",유형:"전환복무",군별:"의무해양경찰",
-     적용입대일:{from:"1984-01-01",to:"2021-12-31"},계급:경,
+     적용입대일:{from:"2003-10-01",to:"2021-12-31"},계급:경,
      기간규칙:buildRules(육군steps,경),
      비고:"해양경찰 전환복무. 복무·진급은 육군 병 기준 매핑(추정). 2023년 폐지."},
   ];
@@ -740,7 +732,7 @@ $("#loadAlt").addEventListener("click",()=>{
 // 입대일별 의무복무 타임라인. 고정구간 {from,m:개월}, 단축구간 {from,base,unit,until}
 // 단축구간: from~until 입대일에 (base개월 − floor((입대일−from)/unit)일) 적용.
 const 육군타임라인=[
-  {from:"1984-01-01",m:30},{from:"1993-01-01",m:26},{from:"2003-10-01",m:24},
+  {from:"2003-10-01",m:24},
   {from:"2006-01-02",base:24,unit:21,until:"2011-02-27"},   // 노무현 단축
   {from:"2011-02-27",m:21},
   {from:"2017-01-03",base:21,unit:14,until:"2020-06-02"},   // 국방개혁 2.0
@@ -750,16 +742,14 @@ const TIMELINE={
   육군:육군타임라인,
   해병대:육군타임라인,
   해군:[
-    {from:"1984-01-01",m:35},{from:"1990-01-01",m:32},{from:"1993-01-01",m:30},
-    {from:"1994-01-01",m:28},{from:"2003-10-01",m:26},
+    {from:"2003-10-01",m:26},
     {from:"2005-11-01",base:26,unit:21,until:"2011-01-03"},
     {from:"2011-01-03",m:23},
     {from:"2017-01-03",base:23,unit:14,until:"2020-06-02"},  // 해군 시작일 미상→육군과 동일 가정
     {from:"2020-06-02",m:20},
   ],
   공군:[
-    {from:"1984-01-01",m:35},{from:"1993-01-01",m:30},{from:"2003-10-01",m:28},
-    {from:"2004-01-01",m:27},
+    {from:"2003-10-01",m:28},{from:"2004-01-01",m:27},
     {from:"2005-10-01",base:27,unit:21,until:"2011-01-01"},
     {from:"2011-01-01",m:24},
     {from:"2017-01-03",base:24,unit:14,until:"2020-06-02"},  // 공군 시작일 미상→육군과 동일 가정
@@ -773,8 +763,7 @@ function addMonths(dt,m){ const d=new Date(dt); d.setMonth(d.getMonth()+m); retu
 
 // 계급별 진급 소요(표준, 입대일 기준). 이·일·상은 4개 군 공통, 병장=나머지.
 const 진급소요=[
-  {from:"1982-01-01",이:5,일:7,상:8},
-  {from:"1995-01-01",이:5,일:6,상:8},
+  {from:"1995-01-01",이:5,일:6,상:8},   // 2003-10 기준선 시점의 진급값 (기본)
   {from:"2005-01-01",이:5,일:6,상:7},
   {from:"2013-01-01",이:3,일:7,상:7},
   {from:"2019-01-01",이:2,일:6,상:6},
@@ -784,7 +773,7 @@ function promoFor(e){ let p=진급소요[0]; for(const s of 진급소요){ if(e>
 function computeService(branch, enlistStr){
   if(!/^\d{4}-\d{2}-\d{2}$/.test(enlistStr)) return {error:"입대일을 YYYY-MM-DD로 입력하세요."};
   const tl=TIMELINE[branch]; const e=parseD(enlistStr);
-  if(e<parseD(tl[0].from)) return {error:"1984-01-01 이후 입대일만 계산할 수 있어요."};
+  if(e<parseD(tl[0].from)) return {error:"2003-10-01 이후 입대일만 계산할 수 있어요. (이 도구는 21세기 기준)"};
   let seg=null;
   for(const s of tl){ if(e>=parseD(s.from)) seg=s; else break; }
   let baseMonths, redDays=0, label;
