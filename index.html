@@ -265,6 +265,7 @@
         <button class="on" data-tab="list">목록 <span id="countBadge" class="pill">0</span></button>
         <button data-tab="export">내보내기</button>
         <button data-tab="import">가져오기</button>
+        <button data-tab="calc">전역일 계산</button>
       </div>
       <div class="tabpane" data-pane="list">
         <div class="saved" id="saved"></div>
@@ -281,6 +282,17 @@
         <p class="hint" style="margin-top:0">내보낸 JSON 배열을 붙여넣고 불러오면 목록이 교체됩니다.</p>
         <textarea id="importBox" style="min-height:120px" class="mono" placeholder="[ { ... }, { ... } ]"></textarea>
         <div class="addbar"><button class="primary" id="doImport">불러오기</button></div>
+      </div>
+      <div class="tabpane" data-pane="calc" hidden>
+        <p class="hint" style="margin-top:0">현역병 입대일을 넣으면 단축식까지 반영해 정확한 복무기간·전역일을 계산합니다. (1984-01-01 이후)</p>
+        <div class="grid2">
+          <label class="fld"><span>군별</span>
+            <select id="calc_branch"><option>육군</option><option>해군</option><option>공군</option><option>해병대</option></select></label>
+          <label class="fld"><span>입대일</span>
+            <input type="text" id="calc_date" class="mono" placeholder="YYYY-MM-DD"></label>
+        </div>
+        <button class="primary" id="calc_go">계산</button>
+        <div id="calc_result" style="margin-top:12px"></div>
       </div>
     </section>
   </div>
@@ -675,6 +687,79 @@ $("#loadConscript").addEventListener("click",()=>{
   document.querySelector('[data-tab="list"]').click();
   flash(`현역병 ${objs.length}건 추가됨`);
 });
+
+/* ───────── 전역일 계산기 (단축식 반영) ───────── */
+// 입대일별 의무복무 타임라인. 고정구간 {from,m:개월}, 단축구간 {from,base,unit,until}
+// 단축구간: from~until 입대일에 (base개월 − floor((입대일−from)/unit)일) 적용.
+const 육군타임라인=[
+  {from:"1984-01-01",m:30},{from:"1993-01-01",m:26},{from:"2003-10-01",m:24},
+  {from:"2006-01-02",base:24,unit:21,until:"2011-02-27"},   // 노무현 단축
+  {from:"2011-02-27",m:21},
+  {from:"2017-01-03",base:21,unit:14,until:"2020-06-02"},   // 국방개혁 2.0
+  {from:"2020-06-02",m:18},
+];
+const TIMELINE={
+  육군:육군타임라인,
+  해병대:육군타임라인,
+  해군:[
+    {from:"1984-01-01",m:35},{from:"1990-01-01",m:32},{from:"1993-01-01",m:30},
+    {from:"1994-01-01",m:28},{from:"2003-10-01",m:26},
+    {from:"2005-11-01",base:26,unit:21,until:"2011-01-03"},
+    {from:"2011-01-03",m:23},
+    {from:"2017-01-03",base:23,unit:14,until:"2020-06-02"},  // 해군 시작일 미상→육군과 동일 가정
+    {from:"2020-06-02",m:20},
+  ],
+  공군:[
+    {from:"1984-01-01",m:35},{from:"1993-01-01",m:30},{from:"2003-10-01",m:28},
+    {from:"2004-01-01",m:27},
+    {from:"2005-10-01",base:27,unit:21,until:"2011-01-01"},
+    {from:"2011-01-01",m:24},
+    {from:"2017-01-03",base:24,unit:14,until:"2020-06-02"},  // 공군 시작일 미상→육군과 동일 가정
+    {from:"2020-06-02",m:21},
+  ],
+};
+const parseD=s=>{ const a=s.split("-").map(Number); return new Date(a[0],a[1]-1,a[2]); };
+const fmtD=dt=>{ const z=n=>String(n).padStart(2,"0"); return `${dt.getFullYear()}-${z(dt.getMonth()+1)}-${z(dt.getDate())}`; };
+const diffDays=(a,b)=>Math.round((a-b)/86400000);
+function addMonths(dt,m){ const d=new Date(dt); d.setMonth(d.getMonth()+m); return d; }
+
+function computeService(branch, enlistStr){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(enlistStr)) return {error:"입대일을 YYYY-MM-DD로 입력하세요."};
+  const tl=TIMELINE[branch]; const e=parseD(enlistStr);
+  if(e<parseD(tl[0].from)) return {error:"1984-01-01 이후 입대일만 계산할 수 있어요."};
+  let seg=null;
+  for(const s of tl){ if(e>=parseD(s.from)) seg=s; else break; }
+  let baseMonths, redDays=0, label;
+  if(seg.m!=null){ baseMonths=seg.m; label=`${seg.from}부터 ${seg.m}개월 고정`; }
+  else{
+    baseMonths=seg.base;
+    redDays=Math.floor(diffDays(e,parseD(seg.from))/seg.unit);
+    label=`${seg.from}~${seg.until} 단축 (${seg.unit}일당 1일) · 단축 ${redDays}일`;
+  }
+  const dis=addMonths(e,baseMonths); dis.setDate(dis.getDate()-redDays-1); // 만기전역일
+  const netDays=diffDays(dis,e)+1;
+  return {baseMonths,redDays,label,discharge:fmtD(dis),netDays};
+}
+
+function runCalc(){
+  const branch=$("#calc_branch").value, date=$("#calc_date").value.trim();
+  const box=$("#calc_result");
+  if(!date){ box.innerHTML=`<div class="empty-note">입대일을 입력하세요.</div>`; return; }
+  const r=computeService(branch,date);
+  if(r.error){ box.innerHTML=`<div class="valid bad" style="border:0;padding:0">⚠ ${esc(r.error)}</div>`; return; }
+  box.innerHTML=`
+    <div class="rule"><div class="rbody">
+      <div class="div-row"><span class="dlab">군별</span><b>${esc(branch)}</b></div>
+      <div class="div-row"><span class="dlab">입영일</span><span class="mono">${esc(date)}</span></div>
+      <div class="div-row"><span class="dlab">복무 기준</span><b>${r.baseMonths}개월${r.redDays?` − 단축 ${r.redDays}일`:""}</b></div>
+      <div class="div-row"><span class="dlab">전역일</span><b style="color:var(--olive-dk)">${r.discharge}</b><span class="u">만기전역(소집해제)</span></div>
+      <div class="div-row"><span class="dlab">실복무</span>${r.netDays}일 <span class="u">(약 ${(r.netDays/30.4).toFixed(1)}개월)</span></div>
+      <div class="hint" style="margin-top:6px">적용: ${esc(r.label)}</div>
+    </div></div>`;
+}
+$("#calc_go").addEventListener("click",runCalc);
+$("#calc_date").addEventListener("input",runCalc);
+$("#calc_branch").addEventListener("change",runCalc);
 
 /* init */
 loadForm(); renderSaved();
