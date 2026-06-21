@@ -168,6 +168,7 @@
   <div class="actions">
     <button class="ghost mini" id="loadSample">현역병 예시</button>
     <button class="ghost mini" id="loadSample2">임기제부사관 예시</button>
+    <button class="brass mini" id="loadConscript">현역병 80~현행 일괄</button>
     <button class="ghost mini" id="resetForm">새로 만들기</button>
   </div>
 </header>
@@ -644,6 +645,35 @@ $("#loadSample2").addEventListener("click",()=>{
     ], 비고:"임기제 6개월 최소, 단기·장기 전환 가능 (개월수는 예시)"
   });
   loadForm();
+});
+
+/* ───────── 현역병 80년대~현행 일괄 ───────── */
+$("#loadConscript").addEventListener("click",()=>{
+  // R: 병역의무 기간규칙 한 줄 (계급별 진급은 현행 기준 임시값)
+  const R=(적용일,m)=>({적용일,의무복무:{병역의무:m},계급별진급:[
+    {계급:"이등병",복무개월:2},{계급:"일병",복무개월:6},
+    {계급:"상병",복무개월:6},{계급:"병장",복무개월:"나머지"}]});
+  const 비고="진급 개월수는 현행(2·6·6·나머지) 기준 임시값. "+
+    "2008~2010·2018.10~2020.5 점진 단축 구간은 생략하고 마일스톤만 반영.";
+  const mk=(id,군별,rules)=>({id,신분:"병/요원",역종:"현역",유형:"현역병",군별,
+    적용입대일:{from:"1984-01-01",to:null},
+    계급:["이등병","일병","상병","병장"],기간규칙:rules,비고});
+  const objs=[
+    mk("army-active","육군",[R("1984-01-01",30),R("1993-01-01",26),
+      R("2003-10-01",24),R("2011-01-01",21),R("2020-06-02",18)]),
+    mk("navy-active","해군",[R("1984-01-01",35),R("1990-01-01",32),
+      R("1993-01-01",30),R("1994-01-01",28),R("2003-10-01",26),
+      R("2011-01-01",23),R("2020-06-02",20)]),
+    mk("airforce-active","공군",[R("1984-01-01",35),R("1993-01-01",30),
+      R("2003-10-01",28),R("2004-01-01",27),R("2011-01-01",24),R("2020-06-02",21)]),
+    mk("marine-active","해병대",[R("1984-01-01",30),R("1993-01-01",26),
+      R("2003-10-01",24),R("2011-01-01",21),R("2020-06-02",18)]),
+  ];
+  const ids=new Set(objs.map(o=>o.id));          // 같은 id는 교체(중복 방지)
+  saved=saved.filter(o=>!ids.has(o.id)).concat(objs);
+  editIndex=-1; renderSaved();
+  document.querySelector('[data-tab="list"]').click();
+  flash(`현역병 ${objs.length}건 추가됨`);
 });
 
 /* init */
