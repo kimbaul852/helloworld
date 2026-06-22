@@ -155,6 +155,10 @@
   .tabs button.on{color:var(--olive); border-bottom-color:var(--olive)}
   .tabpane{padding:16px}
   .tabpane[hidden]{display:none}
+  .cadre-h{margin:14px 0 6px; font-size:14px; color:var(--olive)}
+  .ctab{width:100%; border-collapse:collapse; font-size:13px}
+  .ctab th,.ctab td{border-bottom:1px solid var(--line); padding:6px 8px; text-align:left}
+  .ctab th{color:var(--faint); font-weight:600; font-size:12px}
 
   .addbar{margin-top:10px}
   @media(prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -267,6 +271,7 @@
         <button data-tab="export">내보내기</button>
         <button data-tab="import">가져오기</button>
         <button data-tab="calc">전역일 계산</button>
+        <button data-tab="cadre">간부 진급</button>
       </div>
       <div class="tabpane" data-pane="list">
         <div class="saved" id="saved"></div>
@@ -294,6 +299,10 @@
         </div>
         <button class="primary" id="calc_go">계산</button>
         <div id="calc_result" style="margin-top:12px"></div>
+      </div>
+      <div class="tabpane" data-pane="cadre" hidden>
+        <p class="hint" style="margin-top:0">군인사법 기준 간부 진급 floor 데이터(병 제외). 장교=max(근속,재직), 부사관=재직축. TS 내보내기에 <code>간부진급</code>으로 포함됩니다.</p>
+        <div id="cadrePromo"></div>
       </div>
     </section>
   </div>
@@ -619,7 +628,10 @@ $("#copyJson").addEventListener("click",()=>copy(JSON.stringify(build(),null,2))
 $("#copyAll").addEventListener("click",()=>{ if(!saved.length)return flash("목록이 비어있음",true); copy(allJson()); });
 $("#dlJson").addEventListener("click",()=>{ if(!saved.length)return flash("목록이 비어있음",true); download("service-types.json",allJson(),"application/json"); });
 $("#dlTs").addEventListener("click",()=>{ if(!saved.length)return flash("목록이 비어있음",true);
-  download("service-types.ts","export const 복무유형목록 = "+allJson()+" as const;\n","text/typescript"); });
+  download("service-types.ts",
+    "export const 복무유형목록 = "+allJson()+" as const;\n\n"+
+    "export const 간부진급 = "+JSON.stringify(간부진급,null,2)+" as const;\n",
+    "text/typescript"); });
 $("#doImport").addEventListener("click",()=>{
   try{ const arr=JSON.parse($("#importBox").value); if(!Array.isArray(arr))throw 0;
     saved=arr; editIndex=-1; S=blank(); loadForm(); renderSaved(); flash(`${arr.length}건 불러옴`);
@@ -3262,6 +3274,49 @@ function loadCadreSet(){
 }
 $("#loadCadre").addEventListener("click",loadCadreSet);
 
+/* ───────── 간부 진급 floor 데이터 (군인사법 기준, 병 제외) ─────────
+   근속 = 임관/임용일부터 누적(개월), 재직 = 직전 계급으로서 복무(개월).
+   floor: anchor(시작) | max(근속·재직 중 늦은 날) | 재직 | seed(법정없음·순서만). */
+const 간부진급 = {
+  장교: [
+    { 계급:"소위", 근속:0,    재직:null, floor:"anchor" },
+    { 계급:"중위", 근속:12,   재직:12,   floor:"max" },
+    { 계급:"대위", 근속:36,   재직:24,   floor:"max" },
+    { 계급:"소령", 근속:132,  재직:72,   floor:"max" },
+    { 계급:"중령", 근속:204,  재직:60,   floor:"max" },
+    { 계급:"대령", 근속:264,  재직:48,   floor:"max" },
+    { 계급:"준장", 근속:312,  재직:36,   floor:"max" },
+    { 계급:"소장", 근속:336,  재직:12,   floor:"max" },
+    { 계급:"중장", 근속:null, 재직:null, floor:"seed" },
+    { 계급:"대장", 근속:null, 재직:null, floor:"seed" },
+    { 계급:"원수", 근속:null, 재직:null, floor:"seed" },
+  ],
+  부사관: [
+    { 계급:"하사", 근속:null, 재직:null, floor:"anchor" },
+    { 계급:"중사", 근속:null, 재직:24,   floor:"재직" },
+    { 계급:"상사", 근속:null, 재직:60,   floor:"재직" },
+    { 계급:"원사", 근속:null, 재직:84,   floor:"재직" },
+  ],
+};
+function fmtY(m){ return m==null?"—":(m%12===0?`${m/12}년`:`${m}개월`); }
+function 으로서(w){ const c=w.charCodeAt(w.length-1)-0xAC00; const jong=(c>=0&&c<11172)?c%28:0; return w+(jong?"으로서":"로서"); }
+function renderCadrePromo(){
+  const box=$("#cadrePromo"); if(!box) return;
+  const lab={anchor:"앵커(시작일)",max:"max(근속, 재직)","재직":"재직",seed:"직전시드(법정 없음)"};
+  const mk=(title,rows,anchorNote)=>{
+    const body=[...rows].reverse().map(r=>{
+      const idx=rows.indexOf(r), prior=idx>0?rows[idx-1].계급:null;
+      const 재직=r.재직==null?"—":`${으로서(prior)} ${fmtY(r.재직)}`;
+      const 근속=r.floor==="anchor"?`<span class="u">앵커(${anchorNote})</span>`:fmtY(r.근속);
+      return `<tr><td><b>${r.계급}</b></td><td>${근속}</td><td>${재직}</td><td class="u">${lab[r.floor]}</td></tr>`;
+    }).join("");
+    return `<h3 class="cadre-h">${title}</h3><table class="ctab"><thead><tr>`+
+      `<th>진급될 계급</th><th>최저근속기간</th><th>계급별 최저복무기간</th><th>floor축</th>`+
+      `</tr></thead><tbody>${body}</tbody></table>`;
+  };
+  box.innerHTML = mk("장교",간부진급.장교,"임관일") + mk("부사관",간부진급.부사관,"임용일");
+}
+
 /* ───────── 전역일 계산기 (단축식 반영) ───────── */
 // 입대일별 의무복무 타임라인. 고정구간 {from,m:개월}, 단축구간 {from,base,unit,until}
 // 단축구간: from~until 입대일에 (base개월 − floor((입대일−from)/unit)일) 적용.
@@ -3359,7 +3414,7 @@ $("#calc_date").addEventListener("input",runCalc);
 $("#calc_branch").addEventListener("change",runCalc);
 
 /* init */
-loadForm(); renderSaved();
+loadForm(); renderSaved(); renderCadrePromo();
 </script>
 </body>
 </html>
