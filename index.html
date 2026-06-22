@@ -155,6 +155,12 @@
   .tabs button.on{color:var(--olive); border-bottom-color:var(--olive)}
   .tabpane{padding:16px}
   .tabpane[hidden]{display:none}
+  .calc-method{border:1px solid var(--line); border-radius:8px; padding:8px 12px; background:#fafaf7}
+  .calc-method summary{cursor:pointer; font-weight:600; font-size:13px; color:var(--olive)}
+  .calc-method .method-body{font-size:12.5px; line-height:1.6; margin-top:8px}
+  .calc-method .method-body p{margin:6px 0}
+  .calc-method .method-body ul{margin:6px 0; padding-left:18px}
+  .calc-method code{background:#eee; padding:1px 5px; border-radius:4px; font-size:12px}
   .cadre-h{margin:14px 0 6px; font-size:14px; color:var(--olive)}
   .ctab{width:100%; border-collapse:collapse; font-size:13px}
   .ctab th,.ctab td{border-bottom:1px solid var(--line); padding:6px 8px; text-align:left}
@@ -299,6 +305,21 @@
         </div>
         <button class="primary" id="calc_go">계산</button>
         <div id="calc_result" style="margin-top:12px"></div>
+        <details class="calc-method" style="margin-top:16px">
+          <summary>전역일 계산 방법 (자세히)</summary>
+          <div class="method-body">
+            <p><b>① 복무 기준개월</b> — 입대일이 속한 구간의 의무복무 개월수를 군별·역종별로 적용해요. (육군 24/21/18, 해군 26/23/20, 공군 28/27/24/21 …)</p>
+            <p><b>② 단계적 단축(일단위)</b> — 단축 시행 구간에 입대하면 <code>floor((입대일 − 구간시작) ÷ 단위) = 단축일</code> 만큼 줄어요.</p>
+            <ul>
+              <li><b>노무현 1차</b>: 군은 <b>3주(21일)당 1일</b>, 막바지(2011-01-02~02-26)는 <b>2주(14일)당 1일</b>로 전환. 사회복무는 <b>4주(28일)당 1일</b>.</li>
+              <li><b>국방개혁 2.0</b>: <b>2주(14일)당 1일</b> ('17.1.3 입영자~). 군별로 고정 전환일이 달라요(육 2020-06-02 / 해 2020-04-02 / 공·사회 2020-03-02 / 산기 2020-01-02).</li>
+              <li>국방부 별표5 조견표와 일치하도록 보정됨.</li>
+            </ul>
+            <p><b>③ 전역일(만기전역·소집해제)</b> = <code>입대일 + 기준개월 − 단축일 − 1일</code></p>
+            <p><b>④ 계급별 진급일</b> — 이병→일병→상병 진급은 표준 진급소요(시기별)로 고정이며 <b>단축 영향 없음</b>. 단축은 마지막 계급(<b>병장</b>) 기간만 줄여요. <span class="u">사회복무·산기(보충)는 계급이 없어 복무기간·소집해제일만 표시.</span></p>
+            <p class="u">※ 기준선 2003-10 이후만 계산. 단축은 입대일(보충역은 소집일) 기준.</p>
+          </div>
+        </details>
       </div>
       <div class="tabpane" data-pane="cadre" hidden>
         <p class="hint" style="margin-top:0">군인사법 기준 간부 진급 floor 데이터(병 제외). 장교=max(근속,재직), 부사관=재직축. TS 내보내기에 <code>간부진급</code>으로 포함됩니다.</p>
