@@ -293,7 +293,7 @@
         <p class="hint" style="margin-top:0">현역병 입대일을 넣으면 단축식까지 반영해 정확한 복무기간·전역일을 계산합니다. (2003-10-01 이후)</p>
         <div class="grid2">
           <label class="fld"><span>군별</span>
-            <select id="calc_branch"><option>육군</option><option>해군</option><option>공군</option><option>해병대</option></select></label>
+            <select id="calc_branch"><option>육군</option><option>해군</option><option>공군</option><option>해병대</option><option>상근예비역</option></select></label>
           <label class="fld"><span>입대일</span>
             <input type="text" id="calc_date" class="mono" placeholder="YYYY-MM-DD"></label>
         </div>
@@ -3330,6 +3330,7 @@ const 육군타임라인=[
 const TIMELINE={
   육군:육군타임라인,
   해병대:육군타임라인,
+  상근예비역:육군타임라인,   // 복무기간·단축 모두 육군 현역병과 동일
   해군:[
     {from:"2003-10-01",m:26},
     {from:"2005-11-01",base:26,unit:21,until:"2011-01-03"},
