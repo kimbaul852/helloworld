@@ -169,6 +169,7 @@
     <button class="ghost mini" id="loadSample">현역병 예시</button>
     <button class="ghost mini" id="loadSample2">임기제부사관 예시</button>
     <button class="brass mini" id="loadBase">기본 세트 불러오기</button>
+    <button class="brass mini" id="loadCadre">간부 세트(대표) 추가</button>
     <button class="ghost mini" id="resetForm">새로 만들기</button>
   </div>
 </header>
@@ -2451,6 +2452,45 @@ function loadBaseSet(notify){
   if(notify){ document.querySelector('[data-tab="list"]').click(); flash(`기본 세트 ${BASE_SET.length}건 불러옴`); }
 }
 $("#loadBase").addEventListener("click",()=>loadBaseSet(true));
+
+/* ───────── 간부 세트(대표) ─────────
+   간부는 병역의무가 아니라 장기/단기/임기제 복무. 의무복무는 개월(연→개월), 계급별진급:[].
+   복무구분은 의무복무 키에서 자동 추론. 표 전체가 아닌 대표 유형만 우선. */
+const 장교계급=["소위","중위","대위","소령","중령","대령","준장","소장","중장","대장"];
+const BASE_SET_CADRE=[
+  { id:"nco-long", 신분:"부사관", 역종:"현역", 유형:"임관시 장기복무 부사관", 군별:null,
+    적용입대일:{from:"2018-08-24",to:null}, 계급:["하사","중사","상사","원사"],
+    기간규칙:[{적용일:"2018-08-24",의무복무:{장기:84},계급별진급:[]}],
+    비고:"전군. 장기 7년(84개월). 2018-08-24~. 원사는 한정 진급(괄호)." },
+  { id:"nco-short", 신분:"부사관", 역종:"현역", 유형:"현역부사관", 군별:null,
+    적용입대일:{from:"2003-10-01",to:null}, 계급:["하사","중사","상사","원사"],
+    기간규칙:[{적용일:"2003-10-01",의무복무:{단기:48},계급별진급:[]}],
+    비고:"전군. 단기 4년(48개월). 상사·원사는 한정 진급(괄호). 상시 제도." },
+  { id:"nco-fixed", 신분:"부사관", 역종:"현역", 유형:"임기제부사관", 군별:null,
+    적용입대일:{from:"2008-01-01",to:null}, 계급:["하사","중사","상사","원사"],
+    기간규칙:[{적용일:"2008-01-01",의무복무:{임기제:{최소:6,최대:48,단위:1}},계급별진급:[]}],
+    비고:"전군. 임기제 최소 6개월~4년 이내 연장. 2008-01-01~. 상사·원사 한정." },
+  { id:"wo-tech", 신분:"준사관", 역종:"현역", 유형:"기술·행정 준사관", 군별:null,
+    적용입대일:{from:"2003-10-01",to:null}, 계급:["준위"],
+    기간규칙:[{적용일:"2003-10-01",의무복무:{장기:60},계급별진급:[]}],
+    비고:"전군. 장기 5년(60개월). 상시 제도." },
+  { id:"off-kma", 신분:"장교", 역종:"현역", 유형:"육군사관학교", 군별:"육군",
+    적용입대일:{from:"2003-10-01",to:null}, 계급:장교계급,
+    기간규칙:[{적용일:"2003-10-01",의무복무:{장기:120},계급별진급:[]}],
+    비고:"육군. 장기 10년(120개월). 계급은 소위~대장 전체 사다리." },
+  { id:"off-rotc-army", 신분:"장교", 역종:"현역", 유형:"학군사관(ROTC)", 군별:"육군",
+    적용입대일:{from:"2003-10-01",to:null}, 계급:장교계급,
+    기간규칙:[{적용일:"2003-10-01",의무복무:{단기:28},계급별진급:[]}],
+    비고:"육군. 단기 2년4개월(28개월). 해군·공군·해병은 군별로 별도(2/3년 등)." },
+];
+function loadCadreSet(){
+  const ids=new Set(BASE_SET_CADRE.map(o=>o.id));
+  saved=saved.filter(o=>!ids.has(o.id)).concat(JSON.parse(JSON.stringify(BASE_SET_CADRE)));
+  editIndex=-1; renderSaved();
+  document.querySelector('[data-tab="list"]').click();
+  flash(`간부 세트 ${BASE_SET_CADRE.length}건 추가됨`);
+}
+$("#loadCadre").addEventListener("click",loadCadreSet);
 
 /* ───────── 전역일 계산기 (단축식 반영) ───────── */
 // 입대일별 의무복무 타임라인. 고정구간 {from,m:개월}, 단축구간 {from,base,unit,until}
