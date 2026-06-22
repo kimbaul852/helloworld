@@ -293,7 +293,7 @@
         <p class="hint" style="margin-top:0">현역병 입대일을 넣으면 단축식까지 반영해 정확한 복무기간·전역일을 계산합니다. (2003-10-01 이후)</p>
         <div class="grid2">
           <label class="fld"><span>군별</span>
-            <select id="calc_branch"><option>육군</option><option>해군</option><option>공군</option><option>해병대</option><option>상근예비역</option></select></label>
+            <select id="calc_branch"><option>육군</option><option>해군</option><option>공군</option><option>해병대</option><option>상근예비역</option><option>사회복무요원</option><option>산업기능요원(보충)</option></select></label>
           <label class="fld"><span>입대일</span>
             <input type="text" id="calc_date" class="mono" placeholder="YYYY-MM-DD"></label>
         </div>
@@ -3345,6 +3345,18 @@ const TIMELINE={
     {from:"2017-01-03",base:24,unit:14,until:"2020-06-02"},  // 공군 시작일 미상→육군과 동일 가정
     {from:"2020-06-02",m:21},
   ],
+  // ── 보충역(무계급) ── 국방개혁 단축: 17.1.3 입영자부터 14일당 1일(3개월), 육군과 동일 방법
+  사회복무요원:[
+    {from:"2003-10-01",m:26},
+    {from:"2011-01-01",m:24},                                 // 노무현 단축 결과(보충역 2개월), 일단위 미상→스텝
+    {from:"2017-01-03",base:24,unit:14,until:"2020-06-02"},   // 국방개혁 24→21
+    {from:"2020-06-02",m:21},
+  ],
+  "산업기능요원(보충)":[
+    {from:"2003-10-01",m:26},                                 // 노무현 단축은 2011 환원→26 유지(순변동 없음)
+    {from:"2017-01-03",base:26,unit:14,until:"2020-06-02"},   // 국방개혁 26→23
+    {from:"2020-06-02",m:23},
+  ],
 };
 const parseD=s=>{ const a=s.split("-").map(Number); return new Date(a[0],a[1]-1,a[2]); };
 const fmtD=dt=>{ const z=n=>String(n).padStart(2,"0"); return `${dt.getFullYear()}-${z(dt.getMonth()+1)}-${z(dt.getDate())}`; };
@@ -3359,6 +3371,7 @@ const 진급소요=[
   {from:"2019-01-01",이:2,일:6,상:6},
 ];
 function promoFor(e){ let p=진급소요[0]; for(const s of 진급소요){ if(e>=parseD(s.from)) p=s; else break; } return p; }
+const 무계급역종 = new Set(["사회복무요원","산업기능요원(보충)"]);  // 계급 없는 보충역
 
 function computeService(branch, enlistStr){
   if(!/^\d{4}-\d{2}-\d{2}$/.test(enlistStr)) return {error:"입대일을 YYYY-MM-DD로 입력하세요."};
@@ -3375,6 +3388,9 @@ function computeService(branch, enlistStr){
   }
   const dis=addMonths(e,baseMonths); dis.setDate(dis.getDate()-redDays-1); // 만기전역일
   const netDays=diffDays(dis,e)+1;
+  // 무계급 역종(보충역)은 진급 분해 없이 복무기간·소집해제일만
+  if(무계급역종.has(branch))
+    return {baseMonths,redDays,label,discharge:fmtD(dis),netDays,ranks:null,무계급:true};
   // 계급별 분해 (이·일·상은 진급소요표, 병장=나머지). 진급일은 단축 영향 없음.
   const pr=promoFor(e);
   const 일진급=addMonths(e,pr.이), 상진급=addMonths(e,pr.이+pr.일), 병진급=addMonths(e,pr.이+pr.일+pr.상);
@@ -3394,20 +3410,21 @@ function runCalc(){
   if(!date){ box.innerHTML=`<div class="empty-note">입대일을 입력하세요.</div>`; return; }
   const r=computeService(branch,date);
   if(r.error){ box.innerHTML=`<div class="valid bad" style="border:0;padding:0">⚠ ${esc(r.error)}</div>`; return; }
-  const ranksHtml=r.ranks.map(rk=>
-    `<div class="div-row"><span class="dlab">${rk.계급}</span>
-       <span class="mono">${rk.시작}~</span><span class="u">${esc(rk.개월)}</span></div>`).join("");
-  box.innerHTML=`
-    <div class="rule"><div class="rbody">
-      <div class="div-row"><span class="dlab">군별</span><b>${esc(branch)}</b></div>
-      <div class="div-row"><span class="dlab">입영일</span><span class="mono">${esc(date)}</span></div>
-      <div class="div-row"><span class="dlab">복무 기준</span><b>${r.baseMonths}개월${r.redDays?` − 단축 ${r.redDays}일`:""}</b></div>
-      <div class="div-row"><span class="dlab">전역일</span><b style="color:var(--olive-dk)">${r.discharge}</b><span class="u">만기전역(소집해제)</span></div>
-      <div class="div-row"><span class="dlab">실복무</span>${r.netDays}일 <span class="u">(약 ${(r.netDays/30.4).toFixed(1)}개월)</span></div>
-    </div></div>
+  const 시작라벨=r.무계급?"소집일":"입영일", 종료라벨=r.무계급?"소집해제일":"전역일";
+  const promoSection = r.ranks ? `
     <div class="rule" style="margin-top:8px"><div class="rhead"><span class="n">진급</span>
       <span style="font-size:11px;color:var(--faint)">${r.promoEra}년 진급규칙(표준) 기준</span></div>
-      <div class="rbody">${ranksHtml}</div></div>
+      <div class="rbody">${r.ranks.map(rk=>
+        `<div class="div-row"><span class="dlab">${rk.계급}</span>
+           <span class="mono">${rk.시작}~</span><span class="u">${esc(rk.개월)}</span></div>`).join("")}</div></div>` : "";
+  box.innerHTML=`
+    <div class="rule"><div class="rbody">
+      <div class="div-row"><span class="dlab">구분</span><b>${esc(branch)}</b></div>
+      <div class="div-row"><span class="dlab">${시작라벨}</span><span class="mono">${esc(date)}</span></div>
+      <div class="div-row"><span class="dlab">복무 기준</span><b>${r.baseMonths}개월${r.redDays?` − 단축 ${r.redDays}일`:""}</b></div>
+      <div class="div-row"><span class="dlab">${종료라벨}</span><b style="color:var(--olive-dk)">${r.discharge}</b><span class="u">만기${r.무계급?"소집해제":"전역(소집해제)"}</span></div>
+      <div class="div-row"><span class="dlab">실복무</span>${r.netDays}일 <span class="u">(약 ${(r.netDays/30.4).toFixed(1)}개월)</span></div>
+    </div></div>${promoSection}
     <div class="hint" style="margin-top:6px">적용: ${esc(r.label)}</div>`;
 }
 $("#calc_go").addEventListener("click",runCalc);
