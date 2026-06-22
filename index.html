@@ -162,6 +162,7 @@
   .calc-method .method-body ul{margin:6px 0; padding-left:18px}
   .calc-method code{background:#eee; padding:1px 5px; border-radius:4px; font-size:12px}
   .cadre-h{margin:14px 0 6px; font-size:14px; color:var(--olive)}
+  .cadre-h2{font-weight:700; font-size:13px; color:var(--olive-dk); border-bottom:2px solid var(--olive); padding-bottom:4px}
   .ctab{width:100%; border-collapse:collapse; font-size:13px}
   .ctab th,.ctab td{border-bottom:1px solid var(--line); padding:6px 8px; text-align:left}
   .ctab th{color:var(--faint); font-weight:600; font-size:12px}
@@ -277,7 +278,7 @@
         <button data-tab="export">내보내기</button>
         <button data-tab="import">가져오기</button>
         <button data-tab="calc">전역일 계산</button>
-        <button data-tab="cadre">간부 진급</button>
+        <button data-tab="cadre">간부 진급·정년</button>
       </div>
       <div class="tabpane" data-pane="list">
         <div class="saved" id="saved"></div>
@@ -322,7 +323,7 @@
         </details>
       </div>
       <div class="tabpane" data-pane="cadre" hidden>
-        <p class="hint" style="margin-top:0">군인사법 기준 간부 진급 floor 데이터(병 제외). 장교=max(근속,재직), 부사관=재직축. TS 내보내기에 <code>간부진급</code>으로 포함됩니다.</p>
+        <p class="hint" style="margin-top:0">군인사법 기준 간부 진급 floor + 정년(제8조). 전역 상한 = min(연령·근속·계급정년). TS 내보내기에 <code>간부진급</code>·<code>군인정년</code>으로 포함됩니다.</p>
         <div id="cadrePromo"></div>
       </div>
     </section>
@@ -651,7 +652,8 @@ $("#dlJson").addEventListener("click",()=>{ if(!saved.length)return flash("목�
 $("#dlTs").addEventListener("click",()=>{ if(!saved.length)return flash("목록이 비어있음",true);
   download("service-types.ts",
     "export const 복무유형목록 = "+allJson()+" as const;\n\n"+
-    "export const 간부진급 = "+JSON.stringify(간부진급,null,2)+" as const;\n",
+    "export const 간부진급 = "+JSON.stringify(간부진급,null,2)+" as const;\n\n"+
+    "export const 군인정년 = "+JSON.stringify(군인정년,null,2)+" as const;\n",
     "text/typescript"); });
 $("#doImport").addEventListener("click",()=>{
   try{ const arr=JSON.parse($("#importBox").value); if(!Array.isArray(arr))throw 0;
@@ -3331,6 +3333,31 @@ const 간부진급 = {
     { 계급:"원사", 근속:null, 재직:84,   floor:"재직" },
   ],
 };
+// 군인사법 제8조 정년. 연령(세)·근속(년)·계급(년). null=해당 없음. 원수는 종신.
+const 군인정년 = {
+  장교: [
+    { 계급:"원수", 연령정년:null, 근속정년:null, 계급정년:null },
+    { 계급:"대장", 연령정년:63, 근속정년:null, 계급정년:null },
+    { 계급:"중장", 연령정년:61, 근속정년:null, 계급정년:4 },
+    { 계급:"소장", 연령정년:59, 근속정년:null, 계급정년:6 },
+    { 계급:"준장", 연령정년:58, 근속정년:null, 계급정년:6 },
+    { 계급:"대령", 연령정년:56, 근속정년:35, 계급정년:null },
+    { 계급:"중령", 연령정년:53, 근속정년:32, 계급정년:null },
+    { 계급:"소령", 연령정년:50, 근속정년:24, 계급정년:null },
+    { 계급:"대위", 연령정년:43, 근속정년:15, 계급정년:null },
+    { 계급:"중위", 연령정년:43, 근속정년:15, 계급정년:null },
+    { 계급:"소위", 연령정년:43, 근속정년:15, 계급정년:null },
+  ],
+  준사관: [
+    { 계급:"준위", 연령정년:55, 근속정년:32, 계급정년:null },
+  ],
+  부사관: [
+    { 계급:"원사", 연령정년:55, 근속정년:null, 계급정년:null },
+    { 계급:"상사", 연령정년:53, 근속정년:null, 계급정년:null },
+    { 계급:"중사", 연령정년:45, 근속정년:null, 계급정년:null },
+    { 계급:"하사", 연령정년:40, 근속정년:null, 계급정년:null },
+  ],
+};
 function fmtY(m){ return m==null?"—":(m%12===0?`${m/12}년`:`${m}개월`); }
 function 으로서(w){ const c=w.charCodeAt(w.length-1)-0xAC00; const jong=(c>=0&&c<11172)?c%28:0; return w+(jong?"으로서":"로서"); }
 function renderCadrePromo(){
@@ -3347,7 +3374,19 @@ function renderCadrePromo(){
       `<th>진급될 계급</th><th>최저근속기간</th><th>계급별 최저복무기간</th><th>floor축</th>`+
       `</tr></thead><tbody>${body}</tbody></table>`;
   };
-  box.innerHTML = mk("장교",간부진급.장교,"임관일") + mk("부사관",간부진급.부사관,"임용일");
+  // 정년표 (군인사법 제8조)
+  const yr=v=>v==null?"—":`${v}년`, age=(v,top)=>v==null?(top?"종신":"—"):`${v}세`;
+  const mkRet=(title,rows)=>{
+    const body=rows.map(r=>`<tr><td><b>${r.계급}</b></td><td>${age(r.연령정년,r.계급==="원수")}</td>`+
+      `<td>${yr(r.근속정년)}</td><td>${yr(r.계급정년)}</td></tr>`).join("");
+    return `<h3 class="cadre-h">${title}</h3><table class="ctab"><thead><tr>`+
+      `<th>계급</th><th>연령정년</th><th>근속정년</th><th>계급정년</th></tr></thead><tbody>${body}</tbody></table>`;
+  };
+  box.innerHTML =
+    `<div class="cadre-h2">진급 floor (군인사법 진급 최저복무)</div>`+
+    mk("장교",간부진급.장교,"임관일") + mk("부사관",간부진급.부사관,"임용일") +
+    `<div class="cadre-h2" style="margin-top:18px">정년 (군인사법 제8조)</div>`+
+    mkRet("장교",군인정년.장교) + mkRet("준사관",군인정년.준사관) + mkRet("부사관",군인정년.부사관);
 }
 
 /* ───────── 전역일 계산기 (단축식 반영) ───────── */
