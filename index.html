@@ -3323,9 +3323,10 @@ function renderCadrePromo(){
 // 국방부 별표5(시행계획 1·2차) 조견표로 보정. 국방개혁 14일당 1일, 군별 고정전환일 상이.
 const 육군타임라인=[
   {from:"2003-10-01",m:24},
-  {from:"2006-01-02",base:24,unit:21,until:"2011-02-27"},   // 노무현 1차 (3주단위)
+  {from:"2005-12-11",base:24,unit:21,until:"2011-01-02"},          // 노무현 1차 (3주단위)
+  {from:"2011-01-02",base:24,unit:14,off:88,until:"2011-02-27"},   // 노무현 1차 (2주단위 전환)
   {from:"2011-02-27",m:21},
-  {from:"2016-12-20",base:21,unit:14,until:"2020-06-02"},   // 국방개혁 2차 (14일당 1일)
+  {from:"2016-12-20",base:21,unit:14,until:"2020-06-02"},          // 국방개혁 2차 (14일당 1일)
   {from:"2020-06-02",m:18},
 ];
 const TIMELINE={
@@ -3334,14 +3335,14 @@ const TIMELINE={
   상근예비역:육군타임라인,   // 복무기간·단축 모두 육군 현역병과 동일(별표5 명시)
   해군:[
     {from:"2003-10-01",m:26},
-    {from:"2005-11-01",base:26,unit:21,until:"2011-01-03"},
+    {from:"2005-10-11",base:26,unit:21,until:"2011-01-03"},   // 노무현 1차 (3주단위, 해군그룹)
     {from:"2011-01-03",m:23},
     {from:"2016-10-20",base:23,unit:14,until:"2020-04-02"},  // 국방개혁: 고정전환 2020-04-02
     {from:"2020-04-02",m:20},
   ],
   공군:[
     {from:"2003-10-01",m:28},{from:"2004-01-01",m:27},
-    {from:"2005-10-01",base:27,unit:21,until:"2011-01-01"},
+    {from:"2005-09-10",base:27,unit:21,until:"2011-01-01"},   // 노무현 1차 (3주단위, 공군)
     {from:"2011-01-01",m:24},
     {from:"2016-09-19",base:24,unit:14,until:"2020-03-02"},  // 국방개혁 24→21(3개월), 고정전환 2020-03-02
     {from:"2020-03-02",m:21},
@@ -3385,7 +3386,7 @@ function computeService(branch, enlistStr){
   if(seg.m!=null){ baseMonths=seg.m; label=`${seg.from}부터 ${seg.m}개월 고정`; }
   else{
     baseMonths=seg.base;
-    redDays=Math.floor(diffDays(e,parseD(seg.from))/seg.unit);
+    redDays=(seg.off||0)+Math.floor(diffDays(e,parseD(seg.from))/seg.unit);  // off: 직전 단계 누적 단축일
     label=`${seg.from}~${seg.until} 단축 (${seg.unit}일당 1일) · 단축 ${redDays}일`;
   }
   const dis=addMonths(e,baseMonths); dis.setDate(dis.getDate()-redDays-1); // 만기전역일
