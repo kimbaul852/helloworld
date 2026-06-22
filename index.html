@@ -171,6 +171,7 @@
     <button class="brass mini" id="loadConscript">현역병 2003~현행 일괄</button>
     <button class="brass mini" id="loadAlt">상근·전환복무 일괄</button>
     <button class="brass mini" id="loadSupp">보충역 일괄</button>
+    <button class="brass mini" id="loadProf">전문·대체복무 일괄</button>
     <button class="ghost mini" id="resetForm">새로 만들기</button>
   </div>
 </header>
@@ -764,6 +765,34 @@ $("#loadSupp").addEventListener("click",()=>{
   editIndex=-1; renderSaved();
   document.querySelector('[data-tab="list"]').click();
   flash(`보충역 ${objs.length}건 추가됨`);
+});
+
+/* ───────── 전문·대체복무 일괄 (모두 36개월 고정, 계급 없음) ───────── */
+$("#loadProf").addEventListener("click",()=>{
+  const fix36=(from)=>[{적용일:from,의무복무:{병역의무:36},계급별진급:[]}];
+  const P=(id,역종,유형,from,비고)=>({id,신분:"요원",역종,유형,군별:"-",
+    적용입대일:{from,to:null},계급:[],기간규칙:fix36(from),비고});
+  const objs=[
+    P("public-health-doctor","보충역","공중보건의사","2003-10-01",
+      "농어촌 등 보건의료 특별조치법. 36개월. 1979 도입(기준선 2003-10)."),
+    P("public-service-lawyer","보충역","공익법무관","2003-10-01",
+      "공익법무관에 관한 법률. 36개월. 1995 도입(기준선 2003-10)."),
+    P("research-personnel","보충역","전문연구요원","2003-10-01",
+      "병역법 제36·39조. 36개월. 1973 도입(기준선 2003-10)."),
+    P("public-vet","보충역","공중방역수의사","2008-01-01",
+      "공중방역수의사에 관한 법률. 36개월. 2008 도입."),
+    P("draft-physical-doctor","보충역","병역판정검사전담의사","2003-10-01",
+      "병역법 제34조의6. 36개월. ※시작일 미상(현행) — 확인 후 from 보정 필요."),
+    P("shipping-reserve","예비역","승선근무예비역","2008-01-01",
+      "병역법 제21조의2. 36개월. 2008-01-01 도입. 해운·수산 분야 승선."),
+    P("alt-service","대체역","대체복무요원","2020-10-26",
+      "대체역의 편입 및 복무 등에 관한 법률 제18조. 36개월. 2020-10-26 시행."),
+  ];
+  const ids=new Set(objs.map(o=>o.id));
+  saved=saved.filter(o=>!ids.has(o.id)).concat(objs);
+  editIndex=-1; renderSaved();
+  document.querySelector('[data-tab="list"]').click();
+  flash(`전문·대체복무 ${objs.length}건 추가됨`);
 });
 
 /* ───────── 전역일 계산기 (단축식 반영) ───────── */
