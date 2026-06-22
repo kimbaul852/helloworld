@@ -279,6 +279,7 @@
         <button data-tab="import">가져오기</button>
         <button data-tab="calc">전역일 계산</button>
         <button data-tab="cadre">간부 진급·정년</button>
+        <button data-tab="cadrecalc">간부 복무계산</button>
       </div>
       <div class="tabpane" data-pane="list">
         <div class="saved" id="saved"></div>
@@ -325,6 +326,28 @@
       <div class="tabpane" data-pane="cadre" hidden>
         <p class="hint" style="margin-top:0">군인사법 기준 간부 진급 floor + 정년(제8조). 전역 상한 = min(연령·근속·계급정년). TS 내보내기에 <code>간부진급</code>·<code>군인정년</code>으로 포함됩니다.</p>
         <div id="cadrePromo"></div>
+      </div>
+      <div class="tabpane" data-pane="cadrecalc" hidden>
+        <p class="hint" style="margin-top:0">간부 기본 의무복무에 오버라이드(가산복무·비행자격·필수복무분야)를 적용해 최종 의무복무를 계산합니다.</p>
+        <div class="grid2">
+          <label class="fld"><span>유형</span><select id="cc_type"></select></label>
+          <label class="fld"><span>복무구분</span><select id="cc_duty"></select></label>
+          <label class="fld"><span>가산복무 학년수(등록금)</span><input id="cc_grade" type="number" min="0" max="4" value="0" class="mono"></label>
+          <label class="fld"><span>비행자격</span><select id="cc_flight"><option>없음</option><option>회전익</option><option>고정익</option></select></label>
+          <label class="fld"><span>사관학교 출신</span><select id="cc_academy"><option value="0">아니오</option><option value="1">예</option></select></label>
+          <label class="fld"><span>필수복무분야 종사</span><select id="cc_essential"><option value="0">아니오</option><option value="1">예</option></select></label>
+        </div>
+        <div id="cc_result" style="margin-top:12px"></div>
+        <details class="calc-method" style="margin-top:16px">
+          <summary>오버라이드 적용 규칙 (자세히)</summary>
+          <div class="method-body">
+            <p>간부는 <b>병역의무</b>가 아니라 <b>장기/단기/임기제</b> 복무예요. 기본 의무복무(복무유형) 위에 아래 3층을 <b>교체 → 전환 → 가산</b> 순서로 적용해요.</p>
+            <p><b>① 가산복무(더하기)</b> — 등록금 받은 학년 수만큼 <b>단기</b> 의무복무가 늘어요. 장교 학년당 12개월·최대 4년, 부사관 학년당 12개월·최대 2년. <span class="u">장기로 전환·복무 시 흡수(+0).</span></p>
+            <p><b>② 비행자격(교체+전환)</b> — 조종자격 취득 시 <b>장기 의무복무를 교체</b>하고, 단기였으면 <b>장기로 전환</b>해요. 회전익 10년(전군), 고정익 13년(비사관학교)/15년(사관학교, 해·공군만).</p>
+            <p><b>③ 필수복무분야(교체, 전환 없음)</b> — 장기 부사관 중 종사자만 장기 의무복무를 <b>10년으로 교체</b>(기본 7년 → 10년).</p>
+            <p class="u">※ 교체는 비행자격 우선(둘 다 해당 시). 날짜(취득일·전환일)는 데이터가 아니라 개인 이력으로 둠. 진급·정년은 별도 탭(공통 테이블) 참고.</p>
+          </div>
+        </details>
       </div>
     </section>
   </div>
@@ -653,7 +676,10 @@ $("#dlTs").addEventListener("click",()=>{ if(!saved.length)return flash("목록�
   download("service-types.ts",
     "export const 복무유형목록 = "+allJson()+" as const;\n\n"+
     "export const 간부진급 = "+JSON.stringify(간부진급,null,2)+" as const;\n\n"+
-    "export const 군인정년 = "+JSON.stringify(군인정년,null,2)+" as const;\n",
+    "export const 군인정년 = "+JSON.stringify(군인정년,null,2)+" as const;\n\n"+
+    "export const 가산복무표 = "+JSON.stringify(가산복무표,null,2)+" as const;\n\n"+
+    "export const 비행자격표 = "+JSON.stringify(비행자격표,null,2)+" as const;\n\n"+
+    "export const 필수복무분야표 = "+JSON.stringify(필수복무분야표,null,2)+" as const;\n",
     "text/typescript"); });
 $("#doImport").addEventListener("click",()=>{
   try{ const arr=JSON.parse($("#importBox").value); if(!Array.isArray(arr))throw 0;
@@ -3376,6 +3402,62 @@ const 군인정년 = {
     { 계급:"하사", 연령정년:40, 근속정년:null, 계급정년:null },
   ],
 };
+// ── 간부 의무복무 오버라이드 (기본 의무복무 위에 더하기/교체) ──
+const 가산복무표=[
+  {대상신분:"장교",학년당개월:12,최대학년:4,장기흡수:true,비고:"학사·학군 장교 1~4"},
+  {대상신분:"부사관",학년당개월:12,최대학년:2,장기흡수:true,비고:"민간(가산전형)·학군부사관 1~2"},
+];
+const 비행자격표=[
+  {자격:"회전익",취득가능군별:["육군","해군","공군","해병대"],단기취득시전환:true,교체장기의무복무_년:10,비고:"일반 장기와 동일·출신 무관"},
+  {자격:"고정익",취득가능군별:["해군","공군"],단기취득시전환:true,교체장기의무복무_년:{비사관학교:13,사관학교:15},비고:"공군·해군만·사관학교 15년"},
+];
+const 필수복무분야표=[
+  {대상신분:"부사관",적용복무구분:"장기",교체장기의무복무_년:10,조건:"필수복무분야 종사",비고:"기본 장기 7년→10년"},
+];
+function 가산복무개월(신분,학년수,현재구분){
+  const r=가산복무표.find(x=>x.대상신분===신분); if(!r) return 0;
+  if(현재구분==="장기"&&r.장기흡수) return 0;
+  return Math.min(Math.max(학년수,0),r.최대학년)*r.학년당개월;
+}
+function 비행자격적용(자격,군별,사관학교){
+  const r=비행자격표.find(x=>x.자격===자격); if(!r) return undefined;
+  if(!r.취득가능군별.includes(군별)) return {가능:false,사유:`${군별}은(는) ${자격} 취득 불가`};
+  const 년=typeof r.교체장기의무복무_년==="number"?r.교체장기의무복무_년
+    :(사관학교?r.교체장기의무복무_년.사관학교:r.교체장기의무복무_년.비사관학교);
+  return {가능:true,단기취득시전환:r.단기취득시전환,장기의무복무개월:년*12};
+}
+function 필수복무분야적용(신분,구분,종사){
+  if(!종사) return undefined;
+  const r=필수복무분야표.find(x=>x.대상신분===신분&&x.적용복무구분===구분);
+  return r?r.교체장기의무복무_년*12:undefined;
+}
+// 파이프라인: 교체(비행자격 우선, 없으면 필수복무분야) → 전환 → 가산(단기에만)
+function 간부복무계산(opt){
+  const 신분=opt.obj.신분, 군별=opt.obj.군별, duty=opt.obj.기간규칙[0].의무복무;
+  let 구분=opt.구분, 개월=(구분==="단기"?duty.단기:duty.장기);
+  const steps=[`기본: ${구분} ${개월}개월`];
+  if(opt.비행자격 && opt.비행자격!=="없음"){
+    const r=비행자격적용(opt.비행자격,군별,opt.사관학교);
+    if(r && !r.가능){ steps.push(`비행자격(${opt.비행자격}): ${r.사유} → 미적용`); }
+    else if(r){
+      const 전환=(구분==="단기" && r.단기취득시전환);
+      if(전환) 구분="장기";
+      개월=r.장기의무복무개월;
+      steps.push(`비행자격(${opt.비행자격}) 교체 → 장기 ${개월}개월${전환?" (단기→장기 전환)":""}${opt.사관학교?" · 사관학교":""}`);
+    }
+  } else if(opt.필수종사){
+    const m=필수복무분야적용(신분,구분,true);
+    if(m!=null){ 개월=m; steps.push(`필수복무분야 종사 교체 → 장기 ${개월}개월`); }
+    else steps.push(`필수복무분야: 부사관·장기만 적용 → 미적용`);
+  }
+  if(구분==="단기"){
+    const add=가산복무개월(신분,opt.학년수,구분);
+    if(add>0){ 개월+=add; steps.push(`가산복무 +${add}개월 (${opt.학년수}학년 × 학년당)`); }
+  } else if(opt.학년수>0){
+    steps.push(`가산복무: 장기 전환·복무로 흡수(+0)`);
+  }
+  return {구분,개월,steps};
+}
 function fmtY(m){ return m==null?"—":(m%12===0?`${m/12}년`:`${m}개월`); }
 function 으로서(w){ const c=w.charCodeAt(w.length-1)-0xAC00; const jong=(c>=0&&c<11172)?c%28:0; return w+(jong?"으로서":"로서"); }
 function renderCadrePromo(){
@@ -3524,8 +3606,40 @@ $("#calc_go").addEventListener("click",runCalc);
 $("#calc_date").addEventListener("input",runCalc);
 $("#calc_branch").addEventListener("change",runCalc);
 
+// ── 간부 복무계산 탭 ──
+function ccSyncDuty(){
+  const o=BASE_SET_CADRE[+$("#cc_type").value]; const duty=o.기간규칙[0].의무복무;
+  const opts=[]; if(duty.단기!=null)opts.push("단기"); if(duty.장기!=null)opts.push("장기");
+  $("#cc_duty").innerHTML=opts.map(k=>`<option>${k}</option>`).join("");
+}
+function ccRun(){
+  if(!$("#cc_type").value) return;
+  const o=BASE_SET_CADRE[+$("#cc_type").value];
+  const r=간부복무계산({obj:o, 구분:$("#cc_duty").value, 학년수:+$("#cc_grade").value||0,
+    비행자격:$("#cc_flight").value, 사관학교:$("#cc_academy").value==="1", 필수종사:$("#cc_essential").value==="1"});
+  const yy=Math.floor(r.개월/12), mm=r.개월%12;
+  const yStr=mm===0?`${yy}년`:`${yy}년 ${mm}개월`;
+  $("#cc_result").innerHTML=`
+    <div class="rule"><div class="rbody">
+      <div class="div-row"><span class="dlab">유형</span><b>${esc(o.유형)}</b><span class="u">${esc(o.신분)} · ${esc(o.군별)}</span></div>
+      <div class="div-row"><span class="dlab">최종 복무구분</span><b>${r.구분}</b></div>
+      <div class="div-row"><span class="dlab">최종 의무복무</span><b style="color:var(--olive-dk)">${r.개월}개월 (${yStr})</b></div>
+    </div></div>
+    <div class="rule" style="margin-top:8px"><div class="rhead"><span class="n">적용 과정</span></div>
+      <div class="rbody">${r.steps.map(s=>`<div class="div-row"><span class="u">${esc(s)}</span></div>`).join("")}</div></div>`;
+}
+function ccInit(){
+  if(!$("#cc_type")) return;
+  $("#cc_type").innerHTML=BASE_SET_CADRE.map((o,i)=>`<option value="${i}">${o.유형} (${o.군별})</option>`).join("");
+  ccSyncDuty();
+  $("#cc_type").addEventListener("change",()=>{ ccSyncDuty(); ccRun(); });
+  ["#cc_duty","#cc_flight","#cc_academy","#cc_essential"].forEach(s=>$(s).addEventListener("change",ccRun));
+  $("#cc_grade").addEventListener("input",ccRun);
+  ccRun();
+}
+
 /* init */
-loadForm(); renderSaved(); renderCadrePromo();
+loadForm(); renderSaved(); renderCadrePromo(); ccInit();
 </script>
 </body>
 </html>
